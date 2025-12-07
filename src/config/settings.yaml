@@ -1,0 +1,31 @@
+llm:
+  provider: openai           # "openai" or "anthropic"
+  model: gpt-4o-mini
+  temperature: 0.0
+  max_output_tokens: 2048
+  retry_limit: 5
+  mode: realtime             # "realtime" or "batch"
+
+paths:
+  stage1: data/processed/stage1_blocks
+  stage2A: data/processed/stage2A_blocks
+  stage2B: data/processed/stage2B_blocks
+  stage2C: data/processed/stage2C_quiz
+  stage2D: data/processed/stage2_final
+  logs: logs
+
+batch:
+  provider: openai           # default for future batch flow
+  poll_interval_seconds: 30
+  max_jobs_in_flight: 3
+
+pricing:
+  gpt-4o-mini:
+    input_per_1k: 0.150      # USD per 1K input tokens
+    output_per_1k: 0.600
+  gpt-4o:
+    input_per_1k: 5.000
+    output_per_1k: 15.000
+  claude-3-haiku:
+    input_per_1k: 0.250
+    output_per_1k: 1.250
