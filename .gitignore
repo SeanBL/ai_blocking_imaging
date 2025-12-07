@@ -1,8 +1,31 @@
-venv/
-__pycache__/
 *.pyc
 data/processed/
 data/raw/*.docx
 data/raw/*.pdf
 data/raw/*.jpg
 data/raw/*.png
+
+
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+
+# Virtual environment
+venv/
+.venv/
+
+# Environment variables
+.env
+env/
+
+# IDE configs
+.vscode/
+.idea/
