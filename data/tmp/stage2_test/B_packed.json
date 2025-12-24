@@ -1,0 +1,31 @@
+{
+  "header": "Introduction",
+  "units": [
+    {
+      "unit_id": "u01",
+      "unit_type": "page",
+      "pages": [
+        {
+          "paragraph_indices": [
+            0
+          ]
+        },
+        {
+          "paragraph_indices": [
+            1
+          ]
+        },
+        {
+          "paragraph_indices": [
+            2
+          ]
+        },
+        {
+          "paragraph_indices": [
+            3
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "quiz": [
+    {
+      "question": "Huntington's disease is best described as which type of condition?",
+      "options": [
+        "An inherited progressive brain disease",
+        "An acquired muscle disease",
+        "A temporary balance problem",
+        "A curable blood disorder"
+      ],
+      "correct_answers": [
+        "An inherited progressive brain disease"
+      ],
+      "type": "single",
+      "reserve_for_final_exam": false
+    },
+    {
+      "question": "What is the common age of onset for symptoms of Huntington's disease?",
+      "options": [
+        "5 to 10 years",
+        "20 to 25 years",
+        "35 to 44 years",
+        "60 to 70 years"
+      ],
+      "correct_answers": [
+        "35 to 44 years"
+      ],
+      "type": "single",
+      "reserve_for_final_exam": false
+    },
+    {
+      "question": "Which of the following are early symptoms of Huntington's disease?",
+      "options": [
+        "Uncontrolled movements (chorea)",
+        "Clumsiness",
+        "Balance problems",
+        "Loss of ability to swallow"
+      ],
+      "correct_answers": [
+        "Uncontrolled movements (chorea)",
+        "Clumsiness",
+        "Balance problems"
+      ],
+      "type": "multiple",
+      "reserve_for_final_exam": false
+    },
+    {
+      "question": "If one parent has Huntington's disease, there is a 50 percent chance a child will get it.",
+      "options": [
+        "True",
+        "False"
+      ],
+      "correct_answers": [
+        "True"
+      ],
+      "type": "true_false",
+      "reserve_for_final_exam": false
+    },
+    {
+      "question": "A blood test can tell if a child has the HD gene and will develop the disease.",
+      "options": [
+        "True",
+        "False"
+      ],
+      "correct_answers": [
+        "True"
+      ],
+      "type": "true_false",
+      "reserve_for_final_exam": true
+    }
+  ]
+}

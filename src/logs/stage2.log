@@ -1,0 +1,8 @@
+2025-12-10 21:23:52,880 [INFO] 
+--- Stage 2 Pipeline Started ---
+
+2025-12-10 21:23:52,946 [WARNING] No image catalog found at: C:\Users\redgr\OneDrive\Desktop\python_projects\ai_blocking_imaging\src\data\config\image_catalog.json
+2025-12-10 21:23:52,946 [INFO] Processing ALL blocks: 0
+2025-12-10 21:23:52,958 [INFO] 
+--- Stage 2 ALL processing complete ---
+
