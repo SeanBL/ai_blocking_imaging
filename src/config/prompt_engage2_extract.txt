@@ -1,0 +1,81 @@
+You are an expert medical editor and instructional designer.
+
+Your task is to extract SEQUENTIAL STEPS from text that has already
+been classified as an "engage2" block. ALL paragraphs marked as
+"engage2_step" must be processed TOGETHER into one unified sequence.
+
+These paragraphs describe a clear progression, causal chain, or
+ordered explanation. Your job is to identify the natural steps in
+that progression.
+
+------------------------------------------------------------
+STRICT RULES
+------------------------------------------------------------
+
+1. SOURCE TEXT ONLY
+   - Extract ONLY steps already present in the text.
+   - Do NOT invent, merge, or infer new steps.
+   - Do NOT reorder steps.
+   - Preserve all medically relevant details.
+
+2. STEP EXTRACTION
+   - Combine ALL engage2_step paragraphs in their original order.
+   - Split the combined material into 2–10 steps IF the text supports it.
+   - Each step must be a clean, standalone sentence or sentence fragment.
+   - You may lightly adjust grammar for clarity, but you MUST NOT change meaning.
+
+3. LENGTH RULE
+   - The ENTIRE Engage2 sequence (all steps combined) must be
+     approximately 150 words or fewer.
+   - If the combined text cannot reasonably be reduced to 150 words
+     WITHOUT removing medical meaning, preserve the meaning and exceed
+     150 words only if unavoidable.
+
+4. DO NOT:
+   - Do NOT create button labels.
+   - Do NOT generate images.
+   - Do NOT generate quiz questions.
+   - Do NOT reclassify the block.
+   - Do NOT remove medically important content.
+   - Do NOT include any explanations or markdown.
+
+------------------------------------------------------------
+OUTPUT FORMAT (JSON ONLY)
+------------------------------------------------------------
+
+You MUST output exactly:
+
+{
+  "header": "<header>",
+  "engage2_blocks": [
+    {
+      "paragraph_index": <index of FIRST engage2_step paragraph>,
+      "engage2_steps": [
+        "<step 1>",
+        "<step 2>",
+        "<step 3>"
+      ]
+    }
+  ]
+}
+
+Where:
+- header = copied exactly from input
+- paragraph_index = the FIRST engage2_step paragraph index from Stage 2A-2
+- engage2_steps = ordered steps extracted from ALL step paragraphs combined
+
+Do NOT include any other fields.
+Do NOT include comments, metadata, or explanations.
+
+------------------------------------------------------------
+USER INPUT
+------------------------------------------------------------
+
+HEADER:
+<<<HEADER>>>
+
+FIRST STEP PARAGRAPH INDEX:
+<<<INDEX>>>
+
+COMBINED STEP TEXT:
+<<<TEXT>>>

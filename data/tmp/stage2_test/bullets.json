@@ -1,0 +1,29 @@
+{
+  "header": "Introduction",
+  "bullet_blocks": [
+    {
+      "unit_id": "u01",
+      "page_index": 0,
+      "paragraph_index": 0,
+      "bullet_points": []
+    },
+    {
+      "unit_id": "u01",
+      "page_index": 1,
+      "paragraph_index": 1,
+      "bullet_points": []
+    },
+    {
+      "unit_id": "u01",
+      "page_index": 2,
+      "paragraph_index": 2,
+      "bullet_points": []
+    },
+    {
+      "unit_id": "u01",
+      "page_index": 3,
+      "paragraph_index": 3,
+      "bullet_points": []
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "header": "Introduction",
+  "notes": null,
+  "pages": [
+    {
+      "uuid": "page-000",
+      "type": "page",
+      "page_index": 0,
+      "title": "Huntington's disease (HD) is an inherited",
+      "content": "Huntington's disease (HD) is an inherited progressive brain disease that causes brain cells, called neurons, to die in various areas of the brain, including those that help to control voluntary (intentional) movement. People are born with the defective gene, but symptoms usually do not appear until middle age. The common age of onset is 35 to 44 years and generally, the duration of the illness ranges from 10 to 30 years.",
+      "bullet_points": [],
+      "image_id": null
+    },
+    {
+      "uuid": "page-001",
+      "type": "page",
+      "page_index": 1,
+      "title": "Early symptoms of HD may include",
+      "content": "Early symptoms of HD may include uncontrolled movements (chorea), clumsiness, and balance problems. Later, HD can take away the ability to walk, talk, and swallow. Some people stop recognizing family members. Others are aware of their environment and are able to express emotions.",
+      "bullet_points": [],
+      "image_id": null
+    },
+    {
+      "uuid": "page-002",
+      "type": "page",
+      "page_index": 2,
+      "title": "If one of the parents has",
+      "content": "If one of the parents has Huntington's disease, there is a 50 percent chance a child getting it. A blood test can tell if the child have the HD gene and will develop the disease. There is no cure. Medicines can help manage some of the symptoms, but cannot slow down or stop the disease.",
+      "bullet_points": [],
+      "image_id": null
+    },
+    {
+      "uuid": "page-003",
+      "type": "page",
+      "page_index": 3,
+      "title": "Chorea is derived from the Greek",
+      "content": "Chorea is derived from the Greek word for dance and describes the uncontrollable dance-like movements seen in people with HD.",
+      "bullet_points": [],
+      "image_id": null
+    }
+  ],
+  "quiz": [
+    {
+      "question": "Huntington's disease is best described as which type of condition?",
+      "options": [
+        "An inherited progressive brain disease",
+        "An acquired muscle disease",
+        "A temporary balance problem",
+        "A curable blood disorder"
+      ],
+      "correct_answers": [
+        "An inherited progressive brain disease"
+      ],
+      "type": "single",
+      "reserve_for_final_exam": false
+    },
+    {
+      "question": "What is the common age of onset for symptoms of Huntington's disease?",
+      "options": [
+        "5 to 10 years",
+        "20 to 25 years",
+        "35 to 44 years",
+        "60 to 70 years"
+      ],
+      "correct_answers": [
+        "35 to 44 years"
+      ],
+      "type": "single",
+      "reserve_for_final_exam": false
+    },
+    {
+      "question": "Which of the following are early symptoms of Huntington's disease?",
+      "options": [
+        "Uncontrolled movements (chorea)",
+        "Clumsiness",
+        "Balance problems",
+        "Loss of ability to swallow"
+      ],
+      "correct_answers": [
+        "Uncontrolled movements (chorea)",
+        "Clumsiness",
+        "Balance problems"
+      ],
+      "type": "multiple",
+      "reserve_for_final_exam": false
+    },
+    {
+      "question": "If one parent has Huntington's disease, there is a 50 percent chance a child will get it.",
+      "options": [
+        "True",
+        "False"
+      ],
+      "correct_answers": [
+        "True"
+      ],
+      "type": "true_false",
+      "reserve_for_final_exam": false
+    },
+    {
+      "question": "A blood test can tell if a child has the HD gene and will develop the disease.",
+      "options": [
+        "True",
+        "False"
+      ],
+      "correct_answers": [
+        "True"
+      ],
+      "type": "true_false",
+      "reserve_for_final_exam": true
+    }
+  ]
+}

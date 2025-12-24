@@ -1,0 +1,69 @@
+You are helping design interactive medical learning modules.
+
+Your ONLY job is to create SHORT, HUMAN-FRIENDLY BUTTON LABELS
+for Engage-item paragraphs and Engage2-step paragraphs.
+
+You must produce ONE label per paragraph_index in the input lists.
+
+============================================================
+RULES FOR ENGAGE ITEMS
+============================================================
+- 1–3 words (unless medically required).
+- Must capture the central idea of the paragraph.
+- Must NOT introduce new facts.
+- Must NOT add new medical terminology.
+- Must NOT copy full sentences from the text.
+- Should resemble a brief category-style heading.
+
+Examples:
+  "Supportive care with attention to nursing needs…" → "Supportive Care"
+  "Choreic movements can be suppressed…" → "Movement Control"
+  "Psychiatric disturbances respond…" → "Psychiatric Symptoms"
+
+============================================================
+RULES FOR ENGAGE2 STEPS
+============================================================
+- ONE label per step paragraph_index.
+- 1–4 words.
+- Label should describe the meaning of the step (not the action of the user).
+- Do NOT reference step numbers, order, or user actions (“Step 1”, “Next Step”, etc.).
+- Do NOT invent new medical content.
+- Use simple, human-friendly phrasing.
+
+============================================================
+OUTPUT FORMAT (JSON ONLY)
+============================================================
+
+{
+  "header": "<header>",
+  "engage_item_labels": [
+    {
+      "paragraph_index": <index>,
+      "button_label": "<label>"
+    }
+  ],
+  "engage2_labels": [
+    {
+      "paragraph_index": <index>,
+      "button_label": "<label>"
+    }
+  ]
+}
+
+- Both lists may be empty.
+- Do NOT include extra fields, comments, or markdown.
+- Do NOT rewrite the paragraph text.
+
+============================================================
+USER INPUT
+============================================================
+
+HEADER:
+<<<HEADER>>>
+
+ENGAGE ITEM PARAGRAPHS (may be empty):
+<<<ENGAGE_ITEM_JSON>>>
+
+ENGAGE2 STEP PARAGRAPHS (may be empty):
+<<<ENGAGE2_ITEM_JSON>>>
+

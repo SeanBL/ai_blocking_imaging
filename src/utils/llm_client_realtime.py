@@ -18,6 +18,15 @@ from .token_logger import log_usage
 
 
 class LLMClientRealtime:
+    """
+    A unified interface for calling OpenAI or Anthropic models
+    with retry logic, JSON parsing, and modern API compatibility.
+
+    WORKS WITH:
+      • GPT-4.1, GPT-4.1-Mini, GPT-5.1, GPT-5.1-Preview (OpenAI)
+      • Claude 3.5, Claude 3.7 (Anthropic)
+    """
+
     def __init__(
         self,
         provider: str | None = None,
@@ -26,140 +35,163 @@ class LLMClientRealtime:
         max_tokens: int | None = None,
         max_retries: int | None = None,
     ):
-        # ------- Load API keys -------
+        # -------------------------------
+        # Load API keys
+        # -------------------------------
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
         self.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
 
         if not self.openai_api_key and not self.anthropic_api_key:
             raise RuntimeError(
-                "No API keys found. Ensure .env is loaded and OPENAI_API_KEY / ANTHROPIC_API_KEY exist."
+                "No API keys found. Ensure OPENAI_API_KEY / ANTHROPIC_API_KEY exist in .env"
             )
 
-        # ------- Load YAML settings -------
+        # -------------------------------
+        # Load YAML settings
+        # -------------------------------
         settings = load_settings()
         llm_settings = settings.get("llm", {})
 
         self.provider = provider or llm_settings.get("provider", "openai")
-        self.model = model or llm_settings.get("model", "gpt-4o-mini")
+        self.model = model or llm_settings.get("model", "gpt-4.1-mini")
+
         self.temperature = (
-            temperature if temperature is not None else llm_settings.get("temperature", 0.0)
+            temperature if temperature is not None 
+            else llm_settings.get("temperature", 0.0)
         )
+
+        # Note: this will map to max_completion_tokens for OpenAI
         self.max_tokens = (
-            max_tokens if max_tokens is not None else llm_settings.get("max_output_tokens", 2048)
+            max_tokens if max_tokens is not None
+            else llm_settings.get("max_output_tokens", 2048)
         )
+
         self.max_retries = (
-            max_retries if max_retries is not None else llm_settings.get("retry_limit", 5)
+            max_retries if max_retries is not None 
+            else llm_settings.get("retry_limit", 5)
         )
 
-        # ------- Create OpenAI client immediately -------
+        # -------------------------------
+        # Build clients
+        # -------------------------------
         self._openai_client = OpenAI(api_key=self.openai_api_key)
-
-        # ------- Anthropic client lazy-loaded later -------
         self._anthropic_client: Anthropic | None = None
 
     # ============================================================
-    # OPENAI CALL
+    # OPENAI CALL — Updated for 2025 SDK
     # ============================================================
-
     def _call_openai(self, prompt: str) -> Dict[str, Any]:
         """
-        Calls the OpenAI Chat Completions endpoint using the modern client.
+        Modern OpenAI Chat Completions API:
+        • Uses max_completion_tokens instead of max_tokens.
+        • Usage is a pydantic model.
         """
+
         response = self._openai_client.chat.completions.create(
             model=self.model,
             messages=[{"role": "user", "content": prompt}],
             temperature=self.temperature,
-            max_tokens=self.max_tokens,
+            max_completion_tokens=self.max_tokens,  # ← REQUIRED FIX
         )
 
-        usage = response.usage or {}
-        prompt_tokens = int(usage.get("prompt_tokens", 0))
-        completion_tokens = int(usage.get("completion_tokens", 0))
+        # New SDK: usage is a pydantic object.
+        usage_obj = response.usage
 
-        # Log cost usage
-        log_usage(self.model, prompt_tokens, completion_tokens, provider="openai")
+        prompt_tokens = getattr(usage_obj, "prompt_tokens", 0)
+        completion_tokens = getattr(usage_obj, "completion_tokens", 0)
+
+        # Log API cost
+        log_usage(
+            model=self.model,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            provider="openai"
+        )
 
         return {
             "text": response.choices[0].message.content,
-            "usage": usage,
+            "usage": {
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+            }
         }
 
     # ============================================================
-    # ANTHROPIC CALL
+    # ANTHROPIC CALL — Updated for Messages API
     # ============================================================
-
     def _call_anthropic(self, prompt: str) -> Dict[str, Any]:
-        """
-        Calls the Anthropic Messages API.
-        """
 
-        # Initialize only when first used
         if self._anthropic_client is None:
             self._anthropic_client = Anthropic(api_key=self.anthropic_api_key)
 
         msg = self._anthropic_client.messages.create(
             model=self.model,
-            max_tokens=self.max_tokens,
+            max_tokens=self.max_tokens,    # Anthropic STILL uses max_tokens
             temperature=self.temperature,
             messages=[{"role": "user", "content": prompt}],
         )
 
         text = msg.content[0].text if msg.content else ""
-        usage = getattr(msg, "usage", {}) or {}
 
-        prompt_tokens = int(usage.get("input_tokens", 0))
-        completion_tokens = int(usage.get("output_tokens", 0))
+        usage = getattr(msg, "usage", None)
+        if usage:
+            prompt_tokens = getattr(usage, "input_tokens", 0)
+            completion_tokens = getattr(usage, "output_tokens", 0)
+        else:
+            prompt_tokens = completion_tokens = 0
 
-        # Log cost usage
-        log_usage(self.model, prompt_tokens, completion_tokens, provider="anthropic")
+        log_usage(
+            model=self.model,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            provider="anthropic"
+        )
 
         return {
             "text": text,
-            "usage": usage,
+            "usage": {
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+            }
         }
 
     # ============================================================
     # PUBLIC: RAW TEXT CALL
     # ============================================================
-
     def call_text(self, prompt: str) -> str:
-        """
-        Call the LLM and return raw text, with retries.
-        """
         last_error: Exception | None = None
 
         for attempt in range(1, self.max_retries + 1):
             try:
                 if self.provider == "openai":
                     out = self._call_openai(prompt)
-                    return out["text"]
-
                 elif self.provider == "anthropic":
                     out = self._call_anthropic(prompt)
-                    return out["text"]
-
                 else:
-                    raise ValueError(f"Unsupported provider: {self.provider}")
+                    raise ValueError(f"Unsupported LLM provider: {self.provider}")
+
+                return out["text"]
 
             except Exception as e:
                 last_error = e
                 logging.error(
-                    f"LLM error (provider={self.provider}, model={self.model}) attempt "
-                    f"{attempt}/{self.max_retries}: {e}"
+                    f"[LLM ERROR] Provider={self.provider} Model={self.model} "
+                    f"Attempt {attempt}/{self.max_retries} — {e}"
                 )
-                time.sleep(2 ** attempt)  # exponential backoff
+                time.sleep(2 ** attempt)
 
-        raise RuntimeError(f"LLM failed after {self.max_retries} attempts") from last_error
+        raise RuntimeError(
+            f"LLM failed after {self.max_retries} retries"
+        ) from last_error
 
     # ============================================================
     # PUBLIC: JSON CALL
     # ============================================================
-
     def call_json(self, prompt: str) -> Dict[str, Any]:
         """
-        Call the LLM and parse the response as JSON, retrying on decode errors.
+        Call LLM, parse response as JSON, retry on decode error.
         """
-        last_error: Exception | None = None
+        last_error = None
 
         for attempt in range(1, self.max_retries + 1):
             try:
@@ -169,9 +201,10 @@ class LLMClientRealtime:
             except json.JSONDecodeError as e:
                 last_error = e
                 logging.warning(
-                    f"JSON decode error (attempt {attempt}/{self.max_retries}). "
-                    "Retrying..."
+                    f"[JSON ERROR] attempt {attempt}/{self.max_retries} — {e}"
                 )
-                time.sleep(1.5)
+                time.sleep(1.2)
 
-        raise RuntimeError("Failed to parse valid JSON from LLM") from last_error
+        raise RuntimeError(
+            "LLM returned invalid JSON after multiple retries."
+        ) from last_error

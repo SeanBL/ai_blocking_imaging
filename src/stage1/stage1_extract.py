@@ -4,20 +4,9 @@ from typing import List, Optional
 from docx import Document
 import json
 import pathlib
-from stage1_parse import parse_block
+from src.stage1.stage1_parse import parse_block
+from src.stage1.models import RawBlock
 import re
-
-
-# ---------- Data model ----------
-
-@dataclass
-class RawBlock:
-    """
-    A raw block straight from the Word doc, before we split into
-    image / english_text / translation_text, etc.
-    """
-    header_line: str
-    lines: List[str]
 
 
 # ---------- DOCX loading ----------
@@ -97,35 +86,24 @@ def segment_header_blocks(lines: List[str]) -> List[RawBlock]:
 # ---------- Remove duplicate blocks ----------
 def filter_duplicate_blocks(blocks: List[RawBlock]) -> List[RawBlock]:
     """
-    Keep only blocks that contain meaningful content.
-    If multiple blocks share the same header_line, keep the longest one.
+    Only drop blocks that have no meaningful content at all.
+    Keep all blocks that contain real text, even if headers repeat.
     """
-    filtered = []
-    by_header = {}
-    for block in blocks:
-        hl = block.header_line
-        meaningful_count = sum(
-            1 for ln in block.lines
-            if ln.strip() not in ("Image", "English text", "Translation text", "")
-        )
-        if hl not in by_header or meaningful_count > by_header[hl][0]:
-            by_header[hl] = (meaningful_count, block)
-
     cleaned = []
-    added = set()
     for block in blocks:
-        hl = block.header_line
-        if hl in by_header and by_header[hl][1] is block and hl not in added:
+        has_meaningful = any(
+            ln.strip() not in ("Image", "English text", "Translation text", "")
+            for ln in block.lines
+        )
+        if has_meaningful:
             cleaned.append(block)
-            added.add(hl)
-
     return cleaned
 
 # ---------- Main script ----------
 
 def main():
     # Adjust this path to your actual docx file location
-    root = pathlib.Path(__file__).resolve().parents[1]  # go up from src/
+    root = pathlib.Path(__file__).resolve().parents[2]  # go up from src/
     docx_path = root / "data" / "raw" / "raw_module.docx"
 
     print(f"Loading: {docx_path}")

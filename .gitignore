@@ -4,6 +4,7 @@ data/raw/*.docx
 data/raw/*.pdf
 data/raw/*.jpg
 data/raw/*.png
+data/final/
 
 
 # Byte-compiled files

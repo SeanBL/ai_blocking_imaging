@@ -1,5 +1,5 @@
-You are generating quiz questions for a medical learning module. 
-All questions must be based ONLY on the provided text. 
+You are generating quiz questions for a medical learning module.
+All questions must be based ONLY on the provided text.
 You must not add new medical facts or external knowledge.
 
 STRICT RULES:
@@ -15,8 +15,11 @@ STRICT RULES:
    - Do NOT use “All of the above” or “None of the above.”
 
 3. NUMBER OF QUESTIONS
-   - Generate 3–4 quiz questions for this section.
+   - Generate **3–5 quiz questions** for this section.
+   - If the text supports 5 high-quality questions, generate 5.
+   - If the text supports only 3 or 4 meaningful questions, generate 3 or 4.
    - Create exactly ONE additional “reserve” question for the final exam.
+   - Total questions returned = 4–6, but exactly ONE must be marked as reserve.
 
 4. OPTIONS
    - Options must be short.
@@ -39,6 +42,6 @@ STRICT RULES:
 
 6. FINAL EXAM QUESTION
    - Mark exactly one question with: "reserve_for_final_exam": true
-   - All others must be false.
+   - All other questions must have "reserve_for_final_exam": false
 
 No markdown. No explanation. JSON only.
