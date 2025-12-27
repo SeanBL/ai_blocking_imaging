@@ -33,3 +33,41 @@ Output: module_stage2.json (canonical, renderer-friendly)
 python -m src.stage2.stage2_transform \
   data/processed/module_v3.json \
   data/processed/module_stage2.json
+
+
+---
+
+## Stage 2 Renderer (Final Assembly)
+
+Stage 2.5 and Stage 2.6 do **not** modify the module directly.
+They produce *suggestions* only.
+
+The Stage 2 renderer is responsible for:
+- Applying panel splits from Stage 2.5 (`panel_final`)
+- Applying sentence shaping from Stage 2.6
+- Producing the final, renderer-ready Stage 2 module
+
+The renderer is:
+- Deterministic
+- LLM-free
+- Order-preserving
+- Guaranteed not to modify wording
+
+### Renderer Input / Output
+
+Inputs:
+- `module_stage2.json` (base normalized module)
+- `module_stage2_5_suggestions.json`
+- `module_stage2_6_suggestions.json`
+
+Output:
+- `module_stage2_final.json`
+
+### Run Renderer
+
+```bash
+python -m src.stage2.render_module \
+  data/processed/module_stage2.json \
+  data/processed/module_stage2_5_suggestions.json \
+  data/processed/module_stage2_6_suggestions.json \
+  data/processed/module_stage2_final.json

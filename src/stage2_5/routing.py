@@ -14,51 +14,45 @@ class PanelRouting(str, Enum):
 
 
 def classify_panel(slide: Dict[str, Any]) -> PanelRouting:
-    """
-    Routing rules (ordered, intentional):
-
-    1. Non-panels → NO_ACTION
-    2. Panels with bullets → NO_ACTION (never touch bullets)
-    3. Multiple content blocks:
-        - If blocks are short → BLOCK_SPLIT
-        - If blocks are long → SEMANTIC_INDEX
-    4. Single overlong paragraph → SEMANTIC_SPLIT
-    """
-
     if slide.get("type") != "panel":
         return PanelRouting.NO_ACTION
 
-    content = slide.get("content", [])
-    if not content:
+    blocks = slide.get("content", {}).get("blocks", [])
+    if not blocks:
         return PanelRouting.NO_ACTION
 
-    # Never touch bullet-based panels
-    if any(has_bullets(block) for block in content):
-        return PanelRouting.NO_ACTION
+    # Bullet-aware routing
+    paragraph_blocks = [b for b in blocks if b.get("type") == "paragraph"]
+    bullet_blocks = [b for b in blocks if b.get("type") == "bullets"]
 
-    # Multiple blocks: decide structural vs semantic
-    if len(content) > 1:
-        total_words = sum(word_count(b) for b in content)
+    # If bullets exist, decide based on paragraph count
+    if bullet_blocks:
+        # One paragraph + bullets → keep together
+        if len(paragraph_blocks) <= 1:
+            return PanelRouting.NO_ACTION
 
-        # Writer clearly lumped slides together
+        # Multiple paragraphs + bullets → structural split
+        return PanelRouting.BLOCK_SPLIT
+
+
+    # Multiple paragraph blocks
+    if len(blocks) > 1:
+        total_words = sum(word_count(b["text"]) for b in blocks if b["type"] == "paragraph")
+
         if total_words <= 140:
             return PanelRouting.BLOCK_SPLIT
 
-        # Multiple large ideas → needs semantic reasoning
         return PanelRouting.SEMANTIC_INDEX
 
-    # Exactly one block from here
-    text = content[0]
-
-    # Single long paragraph → semantic split
-    if word_count(text) > 70:
+    # Single paragraph
+    block = blocks[0]
+    if block["type"] == "paragraph" and word_count(block["text"]) > 70:
         return PanelRouting.SEMANTIC_SPLIT
 
     return PanelRouting.NO_ACTION
 
 
-def has_bullets(text: str) -> bool:
-    return any(
-        line.strip().startswith(("•", "-", "*"))
-        for line in text.splitlines()
-    )
+
+def has_bullets(blocks: list[dict]) -> bool:
+    return any(block.get("type") == "bullets" for block in blocks)
+

@@ -452,11 +452,25 @@ def normalize_panel(slide: Dict[str, Any], index: int) -> Dict[str, Any]:
 
     raw_content = slide.get("content")
 
-    if raw_content is not None:
+    # ----------------------------------
+    # PRESERVE STRUCTURED CONTENT
+    # ----------------------------------
+    if isinstance(raw_content, dict) and "blocks" in raw_content:
+        # Stage 1 v3 structured content — KEEP AS-IS
+        slide_out["content"] = raw_content
+
+    elif raw_content is not None:
+        # Legacy fallback (old modules)
         unpacked = unpack_stage1_content(raw_content)
-        slide_out["content"] = unpacked["paragraphs"]
+        slide_out["content"] = {
+            "blocks": [
+                {"type": "paragraph", "text": p}
+                for p in unpacked["paragraphs"]
+            ]
+        }
     else:
-        slide_out["content"] = []
+        slide_out["content"] = {"blocks": []}
+
 
     return slide_out
 

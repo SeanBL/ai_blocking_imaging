@@ -99,4 +99,6 @@ Example (simplified):
   ]
 }
 
-$ python src/stage1/stage1_extract_v3.py   --in data/raw/1561_Advanced_Training_Child_Health.docx   --out data/processed/module_v3.json
+python src/stage1/stage1_extract_v3.py \
+  --in data/raw/1561_Advanced_Training_Child_Health.docx \
+  --out data/processed/module_v3.json
