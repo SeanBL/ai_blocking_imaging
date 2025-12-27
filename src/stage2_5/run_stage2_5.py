@@ -23,6 +23,7 @@ def llm_dispatch(prompt: str) -> Any:
     if (
         "sentence_reflow" in prompt
         or "THIS TASK IS PANEL SPLITTING ONLY" in prompt
+        or "THIS TASK IS SENTENCE SHAPING ONLY" in prompt
     ):
         resp = client.chat.completions.create(
             model="gpt-4o",
@@ -33,7 +34,7 @@ def llm_dispatch(prompt: str) -> Any:
             temperature=0.0,
             max_completion_tokens=900,
         )
-        return resp.choices[0].message.content
+        return json.loads(resp.choices[0].message.content)
 
     return {"rejected": True, "reason": "LLM disabled for this task"}
 

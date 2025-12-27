@@ -1,37 +1,48 @@
 from typing import List, Dict
 
 
-def split_panel_blocks(content: List[str]) -> List[List[str]]:
+def split_panel_blocks(blocks: List[Dict]) -> List[List[Dict]]:
     """
-    Deterministically split panel content into independent blocks.
+    Deterministically split panel content.
 
-    Each block is a list of strings (paragraphs / bullets).
-    Bullet lines stay attached to the preceding paragraph.
+    Rules:
+    - Bullets are atomic and attach to the nearest preceding paragraph.
+    - Panels are split ONLY when bullets are present.
+    - Pure paragraph panels remain intact.
     """
-    blocks: List[List[str]] = []
-    current: List[str] = []
 
-    for line in content:
-        line = line.strip()
-        if not line:
+    # Detect if this panel contains bullets at all
+    has_bullets = any(b.get("type") == "bullets" for b in blocks)
+
+    # If no bullets, do NOT split — keep as one panel
+    if not has_bullets:
+        return [blocks]
+
+    output_blocks: List[List[Dict]] = []
+    current: List[Dict] = []
+
+    for block in blocks:
+        btype = block.get("type")
+
+        if btype == "bullets":
+            current.append(block)
             continue
 
-        # Bullet lines stay with previous paragraph
-        if line.startswith(("•", "-", "*")):
-            current.append(line)
+        if btype == "paragraph":
+            if current:
+                output_blocks.append(current)
+                current = []
+
+            current.append(block)
             continue
 
-        # New paragraph → start a new block
-        if current:
-            blocks.append(current)
-            current = []
-
-        current.append(line)
+        # Safety fallback
+        current.append(block)
 
     if current:
-        blocks.append(current)
+        output_blocks.append(current)
 
-    return blocks
+    return output_blocks
 
 
 def build_block_split_proposal(header: str, blocks: List[List[str]]) -> Dict:

@@ -17,13 +17,9 @@ from .validate_llm_output import (
     validate_engage1_item_review,
     validate_button_label_suggestions,
 )
+from .routing import classify_panel, PanelRouting
+from .block_split import split_panel_blocks
 
-def _has_bullets(blocks: list[str]) -> bool:
-    return any(
-        line.strip().startswith(("•", "-", "*"))
-        for block in blocks
-        for line in block.splitlines()
-    )
 
 def run_stage2_5(module_stage2: Dict[str, Any], llm: LLMClient) -> Dict[str, Any]:
     suggestions = {
@@ -40,53 +36,76 @@ def run_stage2_5(module_stage2: Dict[str, Any], llm: LLMClient) -> Dict[str, Any
         # --------------------------------------
         # META (for humans + auditing)
         # --------------------------------------
+        content = slide.get("content", {})
+        blocks = content.get("blocks", [])
+
         slide_suggestions["meta"] = {
             "id": slide_id,
             "header": slide.get("header"),
             "type": slide_type,
-            "content_preview": slide.get("content", [])[:2],
+            "content_preview": [
+                block.get("text") if block.get("type") == "paragraph"
+                else f"[bullets: {len(block.get('items', []))}]"
+                for block in blocks[:2]
+            ],
         }
+
 
         # ======================================================
         # 🔹 PANEL HANDLING (LLM FINAL SPLIT — IMMUTABLE TEXT)
         # ======================================================
+        
+
         if slide_type == "panel":
 
-            panel_blocks = slide.get("content", [])
-            panel_text = " ".join(panel_blocks)
+            content = slide.get("content", {})
+            blocks = content.get("blocks", [])
+
+            paragraph_blocks = [b for b in blocks if b.get("type") == "paragraph"]
+            bullet_blocks = [b for b in blocks if b.get("type") == "bullets"]
+
+            panel_text = " ".join(b["text"] for b in paragraph_blocks)
             panel_wc = word_count(panel_text)
 
-            # 🔒 HARD SKIP — bullet panels are NEVER split
-            if _has_bullets(panel_blocks):
-                slide_suggestions["panel_final"] = {
-                    "action": "skip",
-                    "reason": "bullet_panel",
-                    "source_word_count": panel_wc,
-                    "slides": [
-                        {
-                            "header": slide.get("header"),
-                            "content": panel_text,
-                            "word_count": panel_wc,
-                        }
-                    ],
-                }
+            routing = classify_panel(slide)
 
-            # Within bounds → keep as-is
-            elif panel_wc <= 70:
+            # -------------------------------
+            # NO ACTION → keep panel as-is
+            # -------------------------------
+            if routing == PanelRouting.NO_ACTION:
                 slide_suggestions["panel_final"] = {
                     "action": "keep",
                     "source_word_count": panel_wc,
                     "slides": [
                         {
                             "header": slide.get("header"),
-                            "content": panel_text,
-                            "word_count": panel_wc,
+                            "content": blocks,
                         }
                     ],
                 }
 
-            # Overlong → LLM split (immutable text)
-            else:
+            # -------------------------------
+            # STRUCTURAL SPLIT (Stage 2.5)
+            # -------------------------------
+            elif routing == PanelRouting.BLOCK_SPLIT:
+                split_blocks = split_panel_blocks(blocks)
+
+                slide_suggestions["panel_final"] = {
+                    "action": "split",
+                    "source_word_count": panel_wc,
+                    "slides": [
+                        {
+                            "header": slide.get("header") if i == 0 else f"{slide.get('header')} (continued)",
+                            "content": group,
+                        }
+                        for i, group in enumerate(split_blocks)
+                    ],
+                }
+
+            # -------------------------------
+            # SEMANTIC SPLIT (LLM)
+            # -------------------------------
+            elif routing == PanelRouting.SEMANTIC_SPLIT:
                 prompt = panel_semantic_slides_prompt(
                     header=slide.get("header", ""),
                     source_text=panel_text,
@@ -107,51 +126,22 @@ def run_stage2_5(module_stage2: Dict[str, Any], llm: LLMClient) -> Dict[str, Any
                             }
                         ],
                     }
-                    continue
+                else:
+                    finalized = []
+                    for idx, s in enumerate(slides):
+                        content_text = s.get("content", "")
+                        wc = word_count(content_text)
+                        finalized.append({
+                            "header": slide.get("header") if idx == 0 else f"{slide.get('header')} (continued)",
+                            "content": content_text,
+                            "word_count": wc,
+                        })
 
-                invalid = False
-                finalized = []
-
-                for idx, s in enumerate(slides):
-                    content = s.get("content", "")
-                    wc = word_count(content)
-
-                    if wc < 30 or wc > 70:
-                        invalid = True
-                        break
-
-                    finalized.append({
-                        "header": (
-                            slide.get("header")
-                            if idx == 0
-                            else f"{slide.get('header')} (continued)"
-                        ),
-                        "content": content,
-                        "word_count": wc,
-                    })
-
-                if invalid:
                     slide_suggestions["panel_final"] = {
-                        "action": "keep",
-                        "reason": "LLM produced invalid panel sizes",
+                        "action": "split",
                         "source_word_count": panel_wc,
-                        "slides": [
-                            {
-                                "header": slide.get("header"),
-                                "content": panel_text,
-                                "word_count": panel_wc,
-                            }
-                        ],
+                        "slides": finalized,
                     }
-                    continue
-
-
-                slide_suggestions["panel_final"] = {
-                    "action": "split",
-                    "source_word_count": panel_wc,
-                    "slides": finalized,
-                }
-
 
         # ======================================================
         # 🔹 ENGAGE 1
