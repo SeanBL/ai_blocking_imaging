@@ -41,9 +41,14 @@ def run_stage2_6(
 
     for slide in module_stage2.get("slides", []):
         slide_id = slide.get("id")
+        slide_type = slide.get("type")
 
-        # 🔒 Stage 2.6 applies ONLY to panel slides
-        if slide.get("type") != "panel":
+        # ✅ PASS THROUGH non-panel slides unchanged
+        if slide_type != "panel":
+            out["slides"][slide_id] = {
+                "passthrough": True,
+                "slide": slide
+            }
             continue
 
         s25 = stage2_5.get("slides", {}).get(slide_id)
@@ -54,45 +59,68 @@ def run_stage2_6(
         if not panel_final:
             continue
 
-        # 🔒 HARD SKIP: bullet panels are never sentence-shaped
-        if panel_final.get("reason") == "bullet_panel":
-            continue
+        panels_out = []
 
-        sentence_blocks = []
-        sb_index = 0
+        for panel_index, block in enumerate(panel_final.get("slides", [])):
+            panel_sentence_blocks = []
+            sb_index = 0
 
-        for block in panel_final.get("slides", []):
-            source_text = block.get("content")
+            content = block.get("content")
+            paragraph_texts = []
+            bullet_blocks = []
 
-            # Only plain paragraph text is valid here
-            if not isinstance(source_text, str):
-                continue
+            # Case A — plain paragraph panel
+            if isinstance(content, str):
+                paragraph_texts = [content]
 
-            source_text = source_text.strip()
-            if not source_text:
-                continue
+            # Case B — mixed blocks (paragraph + bullets)
+            elif isinstance(content, list):
+                for b in content:
+                    if b.get("type") == "paragraph":
+                        paragraph_texts.append(b["text"])
+                    elif b.get("type") == "bullets":
+                        bullet_blocks.append(b)
 
-            prompt = sentence_shaping_prompt(source_text)
-            raw = llm.call(prompt)
+            # Sentence shaping ONLY for paragraphs
+            for source_text in paragraph_texts:
+                source_text = source_text.strip()
+                if not source_text:
+                    continue
 
-            validated = validate_sentence_shaping(raw, source_text)
+                prompt = sentence_shaping_prompt(source_text)
+                raw = llm.call(prompt)
+                validated = validate_sentence_shaping(raw, source_text)
 
-            for sb in validated.get("sentence_blocks", []):
-                sb_index += 1
+                for sb in validated.get("sentence_blocks", []):
+                    sb_index += 1
+                    panel_sentence_blocks.append({
+                        "block_id": f"{slide_id}__p{panel_index}__sb{sb_index:02d}",
+                        "sentences": sb["sentences"],
+                        "word_count": sb["word_count"],
+                        "source_text": source_text,
+                    })
 
-                sentence_blocks.append({
-                    "block_id": f"{slide_id}__sb{sb_index:02d}",
-                    "sentences": sb["sentences"],
-                    "word_count": sb["word_count"],
-                    "source_text": source_text,
+            # ✅ Preserve bullets verbatim AFTER paragraph sentences
+            for bb in bullet_blocks:
+                panel_sentence_blocks.append({
+                    "type": "bullets",
+                    "items": bb["items"]
                 })
 
-        if sentence_blocks:
+            if panel_sentence_blocks:
+                panels_out.append({
+                    "panel_index": panel_index,
+                    "header": block.get("header"),
+                    "sentence_blocks": panel_sentence_blocks,
+                })
+
+        if panels_out:
             out["slides"][slide_id] = {
-                "sentence_blocks": sentence_blocks
+                "panels": panels_out
             }
 
     return out
+
 
 
 # ---------------------------------------------------------
@@ -128,5 +156,3 @@ def main(argv: list[str]) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv))
-
-
