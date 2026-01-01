@@ -12,6 +12,27 @@ def normalize(text: str) -> str:
         return ""
     return " ".join(text.replace("\u00A0", " ").split()).strip()
 
+def canonical_col_label(raw: str) -> str:
+    """
+    Normalize table column headers so extraction is stable across
+    variants like 'Notes and Instructions/Translations'.
+    """
+    t = normalize(raw).lower()
+
+    # strip anything after slash, e.g. ".../translations"
+    if "/" in t:
+        t = t.split("/", 1)[0].strip()
+
+    # common canonical mappings
+    if t.startswith("notes and instructions"):
+        return "notes and instructions"
+    if t.startswith("english text"):
+        return "english text"
+    if t.startswith("image"):
+        return "image"
+
+    # keep other labels as-is
+    return t
 
 def looks_like_intro_cue(text: str) -> bool:
     t = text.strip().lower()
@@ -55,7 +76,10 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
     slide_index = 0
 
     def finalize_slide(slide, columns):
-        notes = "\n".join(columns.get("notes and instructions", []))
+        notes_parts = []
+        notes_parts.extend(columns.get("notes and instructions", []))
+        notes_parts.extend(columns.get("notes and instructions__bullets", []))
+        notes = "\n".join(notes_parts).strip()
         slide["notes"] = notes
 
         notes_lower = notes.lower()
@@ -119,7 +143,7 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
                 }
 
                 label_row = tbl.rows[row_idx + 1]
-                col_labels = [normalize(c.text).lower() for c in label_row.cells]
+                col_labels = [canonical_col_label(c.text) for c in label_row.cells]
                 columns = {label: [] for label in col_labels if label}
                 in_button_labels = False
 

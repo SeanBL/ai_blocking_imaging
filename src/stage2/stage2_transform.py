@@ -236,6 +236,8 @@ def normalize_engage_items(slide: Dict[str, Any]) -> List[Dict[str, Any]]:
                     "button_label": default_engage_item_label(idx),
                     "title": "",
                     "content": normalize_paragraph_list(item),
+                    "image": None,
+
                 }
             )
             continue
@@ -247,6 +249,8 @@ def normalize_engage_items(slide: Dict[str, Any]) -> List[Dict[str, Any]]:
                     "button_label": default_engage_item_label(idx),
                     "title": "",
                     "content": normalize_paragraph_list(item),
+                    "image": None,
+
                 }
             )
             continue
@@ -267,6 +271,7 @@ def normalize_engage_items(slide: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "button_label": btn,
                 "title": normalized_block["title"],
                 "content": normalized_block["content"],
+                "image": None,
             }
         )
 
@@ -283,6 +288,7 @@ def normalize_engage1(slide: Dict[str, Any], index: int) -> Dict[str, Any]:
 
     slide_out: Dict[str, Any] = dict(slide)  # shallow copy
     slide_out["type"] = "engage"
+    slide_out["image"] = slide.get("image")
 
     slide_out["header"] = normalize_ws(slide.get("header"))
     slide_out["notes"] = normalize_ws(slide.get("notes")) or None
@@ -348,6 +354,7 @@ def normalize_engage2(slide: Dict[str, Any], index: int) -> Dict[str, Any]:
 
     slide_out: Dict[str, Any] = dict(slide)
     slide_out["type"] = "engage2"
+    slide_out["image"] = slide.get("image")
 
     slide_out["header"] = normalize_ws(slide.get("header"))
     slide_out["notes"] = normalize_ws(slide.get("notes")) or None
@@ -368,31 +375,57 @@ def normalize_engage2(slide: Dict[str, Any], index: int) -> Dict[str, Any]:
 
 def normalize_engage2_structure(slide: Dict[str, Any], index: int) -> Dict[str, Any]:
     """
-    STEP 5A (updated): Normalize Engage 2 structure
-    with intro + progressive steps.
-    No button label yet.
+    Normalize Engage 2 structure while preserving existing builds when present.
+
+    Guarantees:
+      type = engage2
+      intro: { title, content[] }
+      steps: [ { content[] } ]
+      button: { label }
     """
+
     ensure_uuid(slide, index)
 
-    content: List[str] = slide.get("content", [])
+    # ----------------------------------
+    # Case 1: Already structured Engage 2 → PRESERVE
+    # ----------------------------------
+    if isinstance(slide.get("steps"), list):
+        slide_out = dict(slide)
+        slide_out["type"] = "engage2"
 
-    if not isinstance(content, list):
-        content = []
+        slide_out["intro"] = slide.get("intro", {"title": "", "content": []})
+        slide_out["button"] = slide.get("button", {"label": ""})
 
+        return slide_out
+
+    # ----------------------------------
+    # Case 2: Extract paragraphs from structured blocks
+    # ----------------------------------
+    paragraphs: List[str] = []
+
+    raw_content = slide.get("content")
+
+    if isinstance(raw_content, dict):
+        for block in raw_content.get("blocks", []):
+            if block.get("type") == "paragraph":
+                text = normalize_ws(block.get("text"))
+                if text:
+                    paragraphs.append(text)
+
+    elif isinstance(raw_content, list):
+        paragraphs = normalize_paragraph_list(raw_content)
+
+    # ----------------------------------
+    # Build Engage 2 structure
+    # ----------------------------------
     intro_content: List[str] = []
     steps: List[Dict[str, Any]] = []
 
-    if content:
-        # First paragraph = intro
-        intro_content = [content[0]]
+    if paragraphs:
+        intro_content = [paragraphs[0]]
 
-        # Remaining paragraphs = steps
-        for paragraph in content[1:]:
-            steps.append(
-                {
-                    "content": [paragraph]
-                }
-            )
+        for p in paragraphs[1:]:
+            steps.append({"content": [p]})
 
     slide_out = dict(slide)
     slide_out["type"] = "engage2"
@@ -408,7 +441,7 @@ def normalize_engage2_structure(slide: Dict[str, Any], index: int) -> Dict[str, 
 
     slide_out["steps"] = steps
 
-    # Remove flat content
+    # Remove flat content to prevent ambiguity
     slide_out.pop("content", None)
 
     return slide_out
@@ -487,27 +520,50 @@ def normalize_engage_flat(slide: Dict[str, Any], index: int, engage_type: str) -
 def normalize_engage1_structure(slide: Dict[str, Any], index: int) -> Dict[str, Any]:
     """
     STEP 4A: Normalize Engage 1 structure (intro + items).
+    Works with BOTH:
+      - flat list[str] content (legacy)
+      - structured dict content: {"blocks":[{"type":"paragraph","text":...}, ...]}
     No button labels yet.
     """
     ensure_uuid(slide, index)
 
-    content: List[str] = slide.get("content", [])
+    raw_content = slide.get("content")
 
-    # Safety: ensure list
-    if not isinstance(content, list):
-        content = []
+    # Extract paragraph strings deterministically
+    paragraphs: List[str] = []
+
+    # Case A: structured content from normalize_panel/normalize_engage_flat
+    if isinstance(raw_content, dict) and isinstance(raw_content.get("blocks"), list):
+        for b in raw_content["blocks"]:
+            if isinstance(b, dict) and b.get("type") == "paragraph":
+                t = normalize_ws(b.get("text"))
+                if t:
+                    paragraphs.append(t)
+
+    # Case B: legacy flat list[str]
+    elif isinstance(raw_content, list):
+        for p in raw_content:
+            t = normalize_ws(p)
+            if t:
+                paragraphs.append(t)
+
+    # Case C: string fallback
+    elif isinstance(raw_content, str):
+        t = normalize_ws(raw_content)
+        if t:
+            paragraphs.append(t)
 
     intro_content: List[str] = []
     items: List[Dict[str, Any]] = []
 
-    if content:
-        intro_content = [content[0]]
-
-        for paragraph in content[1:]:
+    if paragraphs:
+        intro_content = [paragraphs[0]]
+        for paragraph in paragraphs[1:]:
             items.append(
                 {
                     "title": "",
                     "content": [paragraph],
+                    "image": None,
                 }
             )
 
@@ -521,10 +577,11 @@ def normalize_engage1_structure(slide: Dict[str, Any], index: int) -> Dict[str, 
 
     slide_out["items"] = items
 
-    # Remove flat content
+    # Remove original content container (we've re-homed it into intro/items)
     slide_out.pop("content", None)
 
     return slide_out
+
 
 def apply_engage1_button_labels(
     slide: Dict[str, Any],
