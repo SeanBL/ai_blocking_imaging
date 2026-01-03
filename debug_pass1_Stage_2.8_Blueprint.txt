@@ -1,0 +1,110 @@
+===== RAW MODEL OUTPUT =====
+{
+  "quiz_id": 1,
+  "blueprints": [
+    {
+      "question_id": "q1",
+      "type": "mcq",
+      "claim_ids": ["c1"],
+      "cognitive_level": "interpret",
+      "target_skill": "Identify the most common form of childhood malnutrition in LMIC as stated in the source and distinguish it from other malnutrition categories.",
+      "correct_answer_idea": "Undernutrition in the first 1000 days of life is the most common form of childhood malnutrition in LMIC.",
+      "distractor_themes": [
+        "Overnutrition/childhood obesity as the most common malnutrition problem in LMIC",
+        "Micronutrient deficiencies as the single most common form (without specifying first 1000 days undernutrition)",
+        "Acute malnutrition only (wasting) as the most common form across LMIC"
+      ],
+      "avoid": [
+        "verbatim restatement",
+        "trick wording",
+        "requiring epidemiologic data not provided in the source"
+      ]
+    },
+    {
+      "question_id": "q2",
+      "type": "mcq",
+      "claim_ids": ["c2", "c3"],
+      "cognitive_level": "apply",
+      "target_skill": "Apply knowledge of malnutrition consequences to select expected clinical/developmental impacts in a child aged 5 and under.",
+      "correct_answer_idea": "Malnutrition in children aged 5 and under is associated with increased susceptibility to infections and impaired physical and cognitive development.",
+      "distractor_themes": [
+        "Malnutrition affects physical growth but not cognitive development",
+        "Malnutrition does not meaningfully change infection risk in young children",
+        "Malnutrition primarily causes behavioral issues without physical/developmental effects"
+      ],
+      "avoid": [
+        "verbatim restatement",
+        "trick wording",
+        "introducing specific diseases or neurodevelopmental diagnoses not mentioned in the source"
+      ]
+    },
+    {
+      "question_id": "q3",
+      "type": "true_false",
+      "claim_ids": ["c4"],
+      "cognitive_level": "interpret",
+      "target_skill": "Evaluate a quantitative public-health statement about malnutrition’s contribution to child mortality in the source.",
+      "correct_answer_idea": "Malnutrition in children aged 5 and under contributes to about one-third of all child deaths (and is associated with increased child mortality).",
+      "distractor_themes": [
+        "Malnutrition contributes to only a small minority of child deaths (e.g., <10%)",
+        "Malnutrition accounts for nearly all child deaths (e.g., >80%)",
+        "Malnutrition affects morbidity but is not associated with mortality"
+      ],
+      "avoid": [
+        "verbatim restatement",
+        "trick wording",
+        "asking for country-specific mortality figures not provided"
+      ]
+    },
+    {
+      "question_id": "q4",
+      "type": "mcq",
+      "claim_ids": ["c5"],
+      "cognitive_level": "interpret",
+      "target_skill": "Link a global child-health strategy to its promoting organizations, time point, and intended age range as described in the source.",
+      "correct_answer_idea": "IMCI was promoted by WHO and UNICEF in 1996 for children from birth to 2 years.",
+      "distractor_themes": [
+        "IMCI promoted by only one organization (WHO alone or UNICEF alone)",
+        "Incorrect timing (e.g., 2000s) despite correct organizations",
+        "Incorrect target age range (e.g., 2–5 years or all under-5s) despite correct year/organizations"
+      ],
+      "avoid": [
+        "verbatim restatement",
+        "trick wording",
+        "testing detailed IMCI components beyond what the source states"
+      ]
+    },
+    {
+      "question_id": "q5",
+      "type": "mcq",
+      "claim_ids": ["c6", "c7"],
+      "cognitive_level": "apply",
+      "target_skill": "Choose appropriate IMCI-aligned nutrition-related actions in a clinical workflow for a young child visit.",
+      "correct_answer_idea": "IMCI recommends assessing nutrition status by weight-for-age and providing nutrition counselling plus follow-up services to encourage regular health care access.",
+      "distractor_themes": [
+        "Use a different anthropometric index as the IMCI-recommended primary assessment (e.g., weight-for-height or BMI-for-age) instead of weight-for-age",
+        "Measure only once without follow-up, focusing solely on documentation rather than counselling/follow-up",
+        "Provide counselling without any anthropometric assessment of nutrition status"
+      ],
+      "avoid": [
+        "verbatim restatement",
+        "trick wording",
+        "requiring calculation of z-scores or chart interpretation steps not provided in the source"
+      ]
+    },
+    {
+      "question_id": "q6",
+      "type": "mcq",
+      "claim_ids": ["c8"],
+      "cognitive_level": "apply",
+      "target_skill": "Select the appropriate growth reference tool based on the child’s age according to the source recommendation.",
+      "correct_answer_idea": "WHO Growth Standard Charts are recommended for children from birth to 2 years.",
+      "distractor_themes": [
+        "Assuming WHO Growth Standard Charts are recommended for all pediatric ages without an age limit",
+        "Selecting an older-child/adolescent growth tool for an infant/toddler age group",
+        "Assuming the charts are only for preterm infants or only for children older than 2 years"
+      ],
+      "avoid": [
+        "ver
+
+===== END =====

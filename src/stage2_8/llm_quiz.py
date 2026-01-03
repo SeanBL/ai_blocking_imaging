@@ -1,35 +1,30 @@
 # src/stage2_8/llm_quiz.py
 from __future__ import annotations
 
-import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from .prompts import SYSTEM_PROMPT, build_user_prompt
 from .logger import logger
 from .llm_call import call_llm_json
 
-def choose_tf_mcq_split(total_questions: int) -> Dict[str, int]:
-    """
-    Conditional T/F strategy (Option B):
+from .llm_concepts import generate_source_claims
+from .llm_blueprints import generate_question_blueprints
 
-    - Prefer 1 True/False question if total_questions >= 3
-    - Otherwise, use all MCQ
-    - ALWAYS return both tf_count and mcq_count
-    """
-    if total_questions < 1:
-        raise ValueError("total_questions must be >= 1")
+from .prompts_author_v2 import (
+    AUTHOR_V2_SYSTEM_PROMPT,
+    build_author_v2_user_prompt,
+)
 
-    if total_questions >= 3:
-        tf_count = 1
-    else:
-        tf_count = 0
+# --------------------------------------------------
+# 🚨 HARD INVARIANT: AUTHOR V2 ONLY
+# --------------------------------------------------
+# This module MUST NOT import or reference:
+# - prompts.py (v1)
+# - SYSTEM_PROMPT (v1)
+# - build_user_prompt
+# - config flags
+# Any violation is a pipeline error by design.
+# --------------------------------------------------
 
-    mcq_count = total_questions - tf_count
-
-    return {
-        "tf_count": tf_count,
-        "mcq_count": mcq_count,
-    }
 
 def generate_quiz_questions(
     *,
@@ -38,36 +33,85 @@ def generate_quiz_questions(
     source_paragraphs: List[str],
 ) -> Dict[str, Any]:
     """
-    Returns parsed JSON object matching the schema defined in prompts.py.
-
-    IMPORTANT:
-    - This function does NOT insert slides.
-    - source_paragraphs must contain ALL panel text between
-      the quiz start and insertion markers.
+    Gold-standard 3-pass quiz generation (V2 ONLY):
+      Pass 1: Source claims (source-locked)
+      Pass 2: Question blueprints (assessment design)
+      Pass 3: Author v2 writes final items from blueprints
     """
-    split = choose_tf_mcq_split(total_questions)
-
-    user_prompt = build_user_prompt(
-        quiz_id=quiz_id,
-        total_questions=total_questions,
-        tf_count=split["tf_count"],
-        mcq_count=split["mcq_count"],
-        source_paragraphs=source_paragraphs,
-    )
 
     logger.info(
-        f"Author LLM invoked — quiz_id={quiz_id}, total_questions={total_questions}"
+        f"[V2] 3-pass quiz generation starting — quiz_id={quiz_id}, total_questions={total_questions}"
     )
 
-    prompt = SYSTEM_PROMPT + "\n\n" + user_prompt
+    # ----------------------------
+    # PASS 1 — SOURCE CLAIMS
+    # ----------------------------
+    claims_payload = generate_source_claims(
+        quiz_id=quiz_id,
+        source_paragraphs=source_paragraphs,
+        concept_count=max(6, total_questions + 2),
+    )
+
+    source_claims = claims_payload.get("source_claims", [])
+    if not source_claims:
+        raise ValueError(
+            f"[V2] No source claims generated — quiz_id={quiz_id}"
+        )
+
+    logger.info(
+        f"[V2] Pass 1 complete — quiz_id={quiz_id}, claims={len(source_claims)}"
+    )
+
+    # ----------------------------
+    # PASS 2 — BLUEPRINTS
+    # ----------------------------
+    trimmed_claims = dict(claims_payload)
+    trimmed_claims["source_claims"] = trimmed_claims["source_claims"][:total_questions + 2]
+
+    blueprints_payload = generate_question_blueprints(
+        quiz_id=quiz_id,
+        total_questions=total_questions,
+        source_claims_payload=trimmed_claims,
+    )
+
+    blueprints = blueprints_payload.get("blueprints", [])
+    if len(blueprints) != total_questions:
+        raise ValueError(
+            f"[V2] Blueprint count mismatch — quiz_id={quiz_id}, "
+            f"expected={total_questions}, actual={len(blueprints)}"
+        )
+
+    logger.info(
+        f"[V2] Pass 2 complete — quiz_id={quiz_id}, blueprints={len(blueprints)}"
+    )
+
+    # ----------------------------
+    # PASS 3 — AUTHOR V2 WRITING
+    # ----------------------------
+    user_prompt = build_author_v2_user_prompt(
+        quiz_id=quiz_id,
+        source_paragraphs=source_paragraphs,
+        source_claims=source_claims,
+        blueprints=blueprints,
+    )
+
+    prompt = AUTHOR_V2_SYSTEM_PROMPT + "\n\n" + user_prompt
+
+    logger.info(
+        f"[V2] Pass 3 (Author v2) invoked — quiz_id={quiz_id}, total_questions={total_questions}"
+    )
 
     parsed = call_llm_json(
         prompt=prompt,
-        stage_tag="Stage 2.8 Author",
+        stage_tag="Stage 2.8 Author V2",
     )
 
+    parsed["quiz_id"] = quiz_id
+
     logger.info(
-        f"Author LLM completed — quiz_id={quiz_id}"
+        f"[V2] Author v2 completed — quiz_id={quiz_id}"
     )
 
     return parsed
+
+

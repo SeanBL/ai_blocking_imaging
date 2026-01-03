@@ -18,6 +18,7 @@ def run_editor_llm(
 
     IMPORTANT:
     - Editor is NOT allowed to change quiz_id or question ordering
+    - Editor MUST return the FULL corrected quiz
     - Invariants are re-injected after LLM call
     """
 
@@ -51,8 +52,10 @@ def run_editor_llm(
     # -------------------------------------------------
     edited["quiz_id"] = quiz_id
 
-    # Ensure questions list exists
+    # Ensure questions list exists (CRITICAL)
     if "questions" not in edited or not isinstance(edited["questions"], list):
+        logger.error("Editor LLM returned invalid schema")
+        logger.error(f"Editor raw output: {json.dumps(edited, ensure_ascii=False, indent=2)}")
         raise ValueError("Editor output missing valid questions list")
 
     # Ensure question_id order is preserved

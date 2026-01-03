@@ -32,26 +32,57 @@ def call_llm_json(
     max_retries: int = 3,
     stage_tag: str = "Stage 2.8",
 ) -> Dict[str, Any]:
-    """
-    Call OpenAI with a prompt and return parsed JSON.
-    Retries on API or JSON errors.
-
-    This function intentionally mirrors Stage 2.5 behavior.
-    """
 
     last_error: Exception | None = None
 
     for attempt in range(1, max_retries + 1):
         try:
-            response = client.chat.completions.create(
+            response = client.responses.create(
                 model=model,
-                messages=[{"role": "user", "content": prompt}],
+                input=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "input_text",  # ✅ FIXED
+                                "text": (
+                                    prompt
+                                    + "\n\nIMPORTANT:\n"
+                                    "- Return ONLY a single valid JSON object.\n"
+                                    "- No markdown.\n"
+                                    "- No extra text.\n"
+                                    "- First character must be '{'.\n"
+                                    "- Last character must be '}'."
+                                ),
+                            }
+                        ],
+                    }
+                ],
                 temperature=temperature,
-                max_completion_tokens=max_tokens,
+                max_output_tokens=max_tokens,
             )
 
-            text = response.choices[0].message.content
-            return json.loads(text)
+            output = response.output_text
+
+            if not output or not output.strip():
+                raise ValueError("LLM returned empty response")
+
+            try:
+                return json.loads(output)
+            except json.JSONDecodeError as e:
+                # 🔍 DEBUG: capture raw output once per failure
+                debug_path = f"debug_pass1_{stage_tag.replace(' ', '_')}.txt"
+
+                with open(debug_path, "w", encoding="utf-8") as f:
+                    f.write("===== RAW MODEL OUTPUT =====\n")
+                    f.write(output)
+                    f.write("\n\n===== END =====\n")
+
+                logging.error(
+                    f"[{stage_tag}] JSON parse failed. "
+                    f"Raw output written to {debug_path}"
+                )
+                raise
 
         except json.JSONDecodeError as e:
             last_error = e
