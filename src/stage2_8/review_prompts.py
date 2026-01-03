@@ -50,6 +50,20 @@ You MUST mark a question as FAIL if ANY of the following are true:
    - The question stem is unclear, misleading,
      or allows multiple interpretations.
 
+6) TRIVIAL RECALL (LOW COGNITIVE VALUE)
+   - The question is essentially a verbatim or near-verbatim restatement
+     of a single source sentence and tests only recognition rather than
+     understanding or interpretation.
+   - This includes True/False questions that simply repeat a stated fact
+     without requiring any reasoning.
+   - For MCQs, this applies when the correct answer can be identified
+     immediately without considering the distractors.
+
+   IMPORTANT:
+   - Do NOT fail a recall question solely because it tests recall.
+   - Do NOT fail a question if the distractors are plausible and the stem
+     requires selecting the best interpretation or application.
+
 ------------------------------------------------------------
 ACCEPTABLE (DO NOT FAIL FOR THESE)
 ------------------------------------------------------------

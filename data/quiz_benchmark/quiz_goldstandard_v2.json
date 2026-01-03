@@ -1,0 +1,44 @@
+{
+  "quiz_id": 2,
+  "questions": [
+    {
+      "question_id": "q1",
+      "type": "mcq",
+      "prompt": "A child’s weight is plotted at the 85th percentile on a growth chart. What does this percentile indicate?",
+      "options": {
+        "A": "About 85% of children of similar age and sex weigh less, and about 15% weigh more",
+        "B": "The child weighs about 85% of the ideal weight for their age",
+        "C": "About 85% of the child’s expected growth has already occurred",
+        "D": "The child has an 85% likelihood of having normal growth"
+      },
+      "correct_answer": "A",
+      "rationale": "The percentile indicates a child’s rank relative to peers of the same age and sex, meaning most children weigh less and a smaller proportion weigh more."
+    },
+    {
+      "question_id": "q2",
+      "type": "mcq",
+      "prompt": "A community health worker records a child’s weight once and wants to assess the child’s growth. Which approach is most appropriate?",
+      "options": {
+        "A": "Plot measurements accurately on the growth chart and use serial measurements over time to assess growth patterns",
+        "B": "Use the single measurement alone because plotting is not needed for interpretation",
+        "C": "Average three weights taken on consecutive days to determine the child’s growth pattern",
+        "D": "Rely on a single measurement because it provides adequate information to assess growth"
+      },
+      "correct_answer": "A",
+      "rationale": "Growth assessment requires accurately plotted measurements over time, as a single measurement does not adequately reflect growth patterns."
+    },
+    {
+      "question_id": "q3",
+      "type": "mcq",
+      "prompt": "Which growth pattern should prompt further investigation?",
+      "options": {
+        "A": "Unexpected downward movement on the growth curves, especially before crossing two percentile lines",
+        "B": "Any single measurement below the 50th percentile",
+        "C": "Investigation only after a child has crossed two percentile lines",
+        "D": "Any upward movement on the growth curves from a prior measurement"
+      },
+      "correct_answer": "A",
+      "rationale": "Unexpected downward movement on growth curves may indicate growth faltering and should be investigated before a child crosses two percentile lines."
+    }
+  ]
+}

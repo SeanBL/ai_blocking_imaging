@@ -1,0 +1,44 @@
+{
+  "quiz_id": 1,
+  "questions": [
+    {
+      "question_id": "q1",
+      "type": "mcq",
+      "prompt": "In which settings is undernutrition during the first 1000 days of life most prevalent?",
+      "options": {
+        "A": "Low- and middle-income countries",
+        "B": "High-income countries",
+        "C": "Only regions affected by armed conflict",
+        "D": "Primarily urban populations worldwide"
+      },
+      "correct_answer": "A",
+      "rationale": "Undernutrition in the first 1000 days of life is most common in low- and middle-income countries."
+    },
+    {
+      "question_id": "q2",
+      "type": "mcq",
+      "prompt": "Which outcome would a community health worker most likely associate with malnutrition in children aged five years and under?",
+      "options": {
+        "A": "Increased susceptibility to infections and impaired development",
+        "B": "Reduced risk of infectious disease",
+        "C": "Improved cognitive performance in later childhood",
+        "D": "Lower overall child mortality"
+      },
+      "correct_answer": "A",
+      "rationale": "Malnutrition in young children is associated with increased infection risk, impaired physical and cognitive development, and increased mortality."
+    },
+    {
+      "question_id": "q3",
+      "type": "mcq",
+      "prompt": "When monitoring growth in a child under two years of age, which approach is most appropriate?",
+      "options": {
+        "A": "Use WHO Growth Standard Charts and assess growth using serial measurements over time",
+        "B": "Use growth charts designed for older children and rely on a single measurement",
+        "C": "Plot measurements without regard to age-specific standards",
+        "D": "Delay growth monitoring until the child reaches two years of age"
+      },
+      "correct_answer": "A",
+      "rationale": "WHO Growth Standard Charts are recommended for children from birth to two years, and serial measurements over time are needed to assess growth patterns."
+    }
+  ]
+}

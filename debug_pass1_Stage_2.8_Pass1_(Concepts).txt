@@ -1,0 +1,124 @@
+===== RAW MODEL OUTPUT =====
+{
+  "quiz_id": 1,
+  "source_claims": [
+    {
+      "claim_id": "c1",
+      "claim_text": "Undernutrition in the first 1000 days of life is the most common form of childhood malnutrition in low- and middle-income countries (LMIC).",
+      "evidence": [
+        "“Undernutrition in the first 1000 days of life is the most common form of childhood malnutrition in low-and middle-income countries (LMIC).”"
+      ],
+      "allowable_inferences": [
+        "A future question could ask learners to identify the most common form of childhood malnutrition in LMIC as described in the text."
+      ],
+      "common_misconceptions": [
+        "Assuming overnutrition is the most common form of childhood malnutrition in LMIC."
+      ]
+    },
+    {
+      "claim_id": "c2",
+      "claim_text": "For children aged 5 and under, malnutrition effects include increased susceptibility to infections.",
+      "evidence": [
+        "“Effects of malnutrition for children aged 5 and under include increased susceptibility to infections…”"
+      ],
+      "allowable_inferences": [
+        "A future question could ask learners to list infection susceptibility as an effect of malnutrition in children aged 5 and under."
+      ],
+      "common_misconceptions": [
+        "Believing malnutrition affects growth only and does not influence infection risk."
+      ]
+    },
+    {
+      "claim_id": "c3",
+      "claim_text": "For children aged 5 and under, malnutrition effects include impaired physical and cognitive development.",
+      "evidence": [
+        "“Effects of malnutrition for children aged 5 and under include… impaired physical and cognitive development…”"
+      ],
+      "allowable_inferences": [
+        "A future question could ask learners to identify physical and cognitive development impairment as consequences of malnutrition."
+      ],
+      "common_misconceptions": [
+        "Thinking malnutrition impairs physical development but not cognitive development."
+      ]
+    },
+    {
+      "claim_id": "c4",
+      "claim_text": "For children aged 5 and under, malnutrition effects include increased child mortality.",
+      "evidence": [
+        "“Effects of malnutrition for children aged 5 and under include… increased child mortality…”"
+      ],
+      "allowable_inferences": [
+        "A future question could ask learners to recognize increased mortality as an effect of malnutrition in young children."
+      ],
+      "common_misconceptions": [
+        "Assuming malnutrition rarely contributes to mortality in young children."
+      ]
+    },
+    {
+      "claim_id": "c5",
+      "claim_text": "Malnutrition contributes to one-third of all deaths of children.",
+      "evidence": [
+        "“increased child mortality contributing to one-third of all deaths of children.”"
+      ],
+      "allowable_inferences": [
+        "A future question could ask learners to recall the proportion of child deaths to which malnutrition contributes as stated in the text."
+      ],
+      "common_misconceptions": [
+        "Assuming malnutrition contributes to only a small fraction of child deaths."
+      ]
+    },
+    {
+      "claim_id": "c6",
+      "claim_text": "In 1996, WHO and UNICEF promoted the Integrated Management of Childhood Illness (IMCI) strategy from birth to 2 years.",
+      "evidence": [
+        "“In 1996, WHO and UNICEF promoted a strategy of Integrated Management of Childhood Illness (IMCI) from birth to 2 years.”"
+      ],
+      "allowable_inferences": [
+        "A future question could ask learners to identify the organizations and year associated with promoting IMCI in the text."
+      ],
+      "common_misconceptions": [
+        "Confusing which organizations promoted IMCI."
+      ]
+    },
+    {
+      "claim_id": "c7",
+      "claim_text": "IMCI recommends assessing child nutrition status by weight for age.",
+      "evidence": [
+        "“The strategy recommends that child nutrition status be assessed by weight for age…”"
+      ],
+      "allowable_inferences": [
+        "A future question could ask learners what measurement IMCI uses to assess nutrition status according to the text."
+      ],
+      "common_misconceptions": [
+        "Assuming IMCI assessment is based on height-for-age rather than weight-for-age."
+      ]
+    },
+    {
+      "claim_id": "c8",
+      "claim_text": "IMCI recommends providing counselling on nutrition and follow-up services to encourage parents to access regular health care.",
+      "evidence": [
+        "“and that counselling on nutrition and follow‐up services be provided to encourage the parents to access regular health care.”"
+      ],
+      "allowable_inferences": [
+        "A future question could ask learners to identify counselling and follow-up services as recommended components of IMCI related to nutrition."
+      ],
+      "common_misconceptions": [
+        "Thinking IMCI focuses only on measurement and does not include counselling or follow-up."
+      ]
+    },
+    {
+      "claim_id": "c9",
+      "claim_text": "WHO Growth Standard Charts are recommended for use with children from birth to 2 years.",
+      "evidence": [
+        "“The WHO Growth Standard Charts are recommended for use with children from birth to 2 years.”"
+      ],
+      "allowable_inferences": [
+        "A future question could ask learners the age range for which WHO Growth Standard Charts are recommended in the text."
+      ],
+      "common_misconceptions": [
+        "Assuming the charts are recommended for all children regardless of age."
+      ]
+    },
+
+
+===== END =====

@@ -165,15 +165,51 @@ def run_quiz_pipeline(
         return edited_quiz
 
     # -------------------------------------------------
-    # 7️⃣ HARD STOP
+    # 7️⃣ SECOND (FINAL) EDITOR RETRY WITH REVIEWER GUIDANCE
+    # -------------------------------------------------
+    logger.warning(
+        f"Retrying editor once with explicit reviewer guidance — quiz_id={quiz_id}"
+    )
+
+    edited_quiz_2 = run_editor_llm(
+        quiz_payload=edited_quiz,
+        review_result=final_review,
+    )
+
+    validate_quiz_payload(
+        payload=edited_quiz_2,
+        quiz_id=quiz_id,
+        expected_count=total_questions,
+    )
+
+    logger.info(
+        f"Structural validation passed after second editor — quiz_id={quiz_id}"
+    )
+
+    final_review_2 = review_quiz_quality(
+        quiz_payload=edited_quiz_2,
+        source_paragraphs=source_paragraphs,
+    )
+
+    if final_review_2.get("status") == "PASS":
+        logger.info(
+            f"Quality review passed after second editor fallback — quiz_id={quiz_id}"
+        )
+        logger.info(
+            f"Stage 2.8 quiz pipeline completed — quiz_id={quiz_id}"
+        )
+        return edited_quiz_2
+
+    # -------------------------------------------------
+    # 8️⃣ HARD STOP (INTENTIONAL)
     # -------------------------------------------------
     logger.error(
-        f"Stage 2.8 quiz failed quality review after editor — quiz_id={quiz_id}"
+        f"Stage 2.8 quiz failed quality review after second editor — quiz_id={quiz_id}"
     )
     logger.warning(
-        f"Reviewer issues — quiz_id={quiz_id}: {final_review.get('issues')}"
+        f"Reviewer issues — quiz_id={quiz_id}: {final_review_2.get('issues')}"
     )
 
     raise RuntimeError(
-        f"Quiz {quiz_id} failed quality review after editor fallback"
+        f"Quiz {quiz_id} failed quality review after editor retries"
     )
