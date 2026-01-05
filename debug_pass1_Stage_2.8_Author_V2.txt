@@ -1,0 +1,78 @@
+===== RAW MODEL OUTPUT =====
+{
+  "quiz_id": 3,
+  "questions": [
+    {
+      "question_id": "q1",
+      "type": "mcq",
+      "prompt": "A rural village has no regularly available physician or nurse, and the nearest clinic is several hours away. A community member asks who they should contact first for basic health guidance and connection to services. Which response best fits how care is commonly linked in this setting?",
+      "options": {
+        "A": "Contact the community health worker, who may be the main—and sometimes only—healthcare link in low-resource communities",
+        "B": "Wait to see a hospital-based nurse, since hospitals are typically the first point of contact for community health needs",
+        "C": "Use telemedicine as the primary solution, since it replaces the need for local health workers in low-resource areas",
+        "D": "Ask the community health worker only for transportation, because clinical guidance must come from physicians"
+      },
+      "correct_answer": "A",
+      "rationale": "In low-resource communities where physicians and nurses are in short supply, CHWs are often the primary and sometimes the only healthcare link."
+    },
+    {
+      "question_id": "q2",
+      "type": "mcq",
+      "prompt": "A program manager is explaining how different members of the healthcare team typically interact with the community. Which description best captures the usual work setting of CHWs compared with doctors and nurses?",
+      "options": {
+        "A": "CHWs mainly work in inpatient wards, while doctors and nurses primarily do community outreach",
+        "B": "CHWs are typically in the field with people, while doctors and nurses are typically based in hospitals and clinics",
+        "C": "CHWs, doctors, and nurses generally work in the same setting and rotate equally between clinic and field",
+        "D": "CHWs are primarily laboratory-based, while doctors and nurses are primarily home-visit based"
+      },
+      "correct_answer": "B",
+      "rationale": "CHWs are described as crucial healthcare team members who are in the field with people, whereas doctors and nurses are typically in hospitals and clinics."
+    },
+    {
+      "question_id": "q3",
+      "type": "mcq",
+      "prompt": "During home visits, a CHW notices multiple households using contaminated water sources and lacking safe waste disposal. What is the most appropriate interpretation of why the CHW is well positioned to identify this problem early?",
+      "options": {
+        "A": "Because CHWs are in the field and see living conditions, they may be the first to recognize unhealthy sanitary and other troubling conditions",
+        "B": "Because sanitation problems can only be confirmed through laboratory testing, CHWs are unlikely to identify them early",
+        "C": "Because sanitation issues are primarily identified during clinic appointments, home observations are usually not helpful",
+        "D": "Because housing conditions are outside the CHW role, they should avoid noting or reporting them"
+      },
+      "correct_answer": "A",
+      "rationale": "Field presence allows CHWs to observe living conditions directly, making them likely to be first to recognize unhealthy sanitary and other troubling conditions."
+    },
+    {
+      "question_id": "q4",
+      "type": "mcq",
+      "prompt": "A training session asks learners to identify situations where CHWs may be the earliest observers in the community. Which pair of events best fits this role?",
+      "options": {
+        "A": "Detecting outbreaks early and arriving first at an accident scene",
+        "B": "Confirming outbreaks only after hospital admission data are reviewed and managing accidents only after a physician arrives",
+        "C": "Providing only scheduled health talks and avoiding involvement in unexpected community events",
+        "D": "Identifying outbreaks only through laboratory surveillance and responding to accidents only within clinics"
+      },
+      "correct_answer": "A",
+      "rationale": "CHWs may be the first to notice outbreaks and may also be the first on the scene of an accident."
+    },
+    {
+      "question_id": "q5",
+      "type": "mcq",
+      "prompt": "A district health program has frequent CHW turnover and is repeatedly recruiting to fill vacant posts. The supervisor proposes a mentorship program for new CHWs. Which expected effect best explains how mentorship can help reduce turnover in this context?",
+      "options": {
+        "A": "Mentorship helps new CHWs build confidence and competence and see a path for growth, making them more likely to stay and reducing repeated recruitment needs",
+        "B": "Mentorship primarily increases administrative documentation, which improves retention by standardizing paperwork",
+        "C": "Retention is determined only by salary, so mentorship is unlikely to influence whether CHWs stay",
+        "D": "Mentorship delays skill development by limiting independent work, which reduces turnover by preventing CHWs from taking on responsibilities"
+      },
+      "correct_answer": "A",
+      "rationale": "Mentorship is described as helping new CHWs gain confidence and competence quickly; when CHWs feel confident, they are more likely to see a growth path and stay in their roles, reducing the need for constant recruitment."
+    },
+    {
+      "question_id": "q6",
+      "type": "mcq",
+      "prompt": "A CHW mentorship initiative aims to improve community health impact. Which interpretation best links mentorship and team inclusion to how CHWs perform and how the community benefits?",
+      "options": {
+        "A": "Mentorship and feeling part of an expert team can improve professionalism and increase effectiveness in outreach, health education, and advocacy, contributing to better community health outcomes",
+        "B": "Mentorship mainly improves job satisfaction, but it does not meaningfully change outreach, education
+
+===== END =====

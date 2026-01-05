@@ -100,13 +100,22 @@ def _apply_fix_patch_to_question(question: Dict[str, Any], patch: Dict[str, Any]
     # -------------------------------------------------
     # options
     # -------------------------------------------------
-    if "options" in patch and isinstance(patch["options"], dict):
-        if not isinstance(question.get("options"), dict):
-            question["options"] = {}
+    if not isinstance(question.get("options"), dict):
+        question["options"] = {}
 
+    # Case 1: options as dict
+    if "options" in patch and isinstance(patch["options"], dict):
         for k, v in patch["options"].items():
             if k in ("A", "B", "C", "D") and isinstance(v, str) and v.strip():
                 question["options"][k] = v.strip()
+                applied = True
+
+    # Case 2: dotted option keys (e.g., "options.C")
+    for key, value in patch.items():
+        if key.startswith("options.") and isinstance(value, str) and value.strip():
+            opt = key.split(".", 1)[1]
+            if opt in ("A", "B", "C", "D"):
+                question["options"][opt] = value.strip()
                 applied = True
 
     return applied

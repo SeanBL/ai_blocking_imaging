@@ -9,20 +9,97 @@ from .llm_call import call_llm_json
 from .llm_concepts import generate_source_claims
 from .llm_blueprints import generate_question_blueprints
 
-from .prompts_author_v2 import (
-    AUTHOR_V2_SYSTEM_PROMPT,
-    build_author_v2_user_prompt,
+from .prompts_author_single import (
+    AUTHOR_SINGLE_SYSTEM_PROMPT,
+    build_author_single_user_prompt,
 )
+from .validate_quiz_post_assembly import validate_quiz_post_assembly
+
+def validate_single_question(
+    *,
+    question: Dict[str, Any],
+    question_id: str,
+    quiz_id: int,
+) -> None:
+    """
+    Validate ONE authored question before quiz assembly.
+    Raises ValueError on any violation.
+    """
+
+    required_keys = {"type", "prompt", "correct_answer", "rationale"}
+
+    if not isinstance(question, dict):
+        raise ValueError("Question must be an object")
+
+    missing = required_keys - set(question.keys())
+    if missing:
+        raise ValueError(
+            f"[V2] Missing keys {missing} — quiz_id={quiz_id}, question={question_id}"
+        )
+
+    qtype = question.get("type")
+    if qtype not in ("mcq", "true_false"):
+        raise ValueError(
+            f"[V2] Invalid type '{qtype}' — quiz_id={quiz_id}, question={question_id}"
+        )
+
+    # -----------------------
+    # Prompt + rationale
+    # -----------------------
+    if not isinstance(question["prompt"], str) or not question["prompt"].strip():
+        raise ValueError(
+            f"[V2] Empty prompt — quiz_id={quiz_id}, question={question_id}"
+        )
+
+    if not isinstance(question["rationale"], str) or not question["rationale"].strip():
+        raise ValueError(
+            f"[V2] Empty rationale — quiz_id={quiz_id}, question={question_id}"
+        )
+
+    # -----------------------
+    # TRUE / FALSE
+    # -----------------------
+    if qtype == "true_false":
+        if "options" in question:
+            raise ValueError(
+                f"[V2] true_false must not include options — quiz_id={quiz_id}, question={question_id}"
+            )
+
+        if not isinstance(question["correct_answer"], bool):
+            raise ValueError(
+                f"[V2] true_false correct_answer must be boolean — quiz_id={quiz_id}, question={question_id}"
+            )
+
+    # -----------------------
+    # MCQ
+    # -----------------------
+    if qtype == "mcq":
+        options = question.get("options")
+
+        if not isinstance(options, dict):
+            raise ValueError(
+                f"[V2] mcq options must be object — quiz_id={quiz_id}, question={question_id}"
+            )
+
+        if set(options.keys()) != {"A", "B", "C", "D"}:
+            raise ValueError(
+                f"[V2] mcq options must be A–D — quiz_id={quiz_id}, question={question_id}"
+            )
+
+        for k, v in options.items():
+            if not isinstance(v, str) or not v.strip():
+                raise ValueError(
+                    f"[V2] mcq option {k} empty — quiz_id={quiz_id}, question={question_id}"
+                )
+
+        if question["correct_answer"] not in ("A", "B", "C", "D"):
+            raise ValueError(
+                f"[V2] mcq correct_answer invalid — quiz_id={quiz_id}, question={question_id}"
+            )
+
 
 # --------------------------------------------------
-# 🚨 HARD INVARIANT: AUTHOR V2 ONLY
-# --------------------------------------------------
-# This module MUST NOT import or reference:
-# - prompts.py (v1)
-# - SYSTEM_PROMPT (v1)
-# - build_user_prompt
-# - config flags
-# Any violation is a pipeline error by design.
+# HARD INVARIANT: SINGLE-QUESTION AUTHORING ONLY
 # --------------------------------------------------
 
 
@@ -33,10 +110,12 @@ def generate_quiz_questions(
     source_paragraphs: List[str],
 ) -> Dict[str, Any]:
     """
-    Gold-standard 3-pass quiz generation (V2 ONLY):
+    Gold-standard 3-pass quiz generation (V2, SAFE):
+
       Pass 1: Source claims (source-locked)
-      Pass 2: Question blueprints (assessment design)
-      Pass 3: Author v2 writes final items from blueprints
+      Pass 2: Question blueprints
+      Pass 3: Author writes ONE question per request
+              (Python assembles final quiz JSON)
     """
 
     logger.info(
@@ -66,7 +145,7 @@ def generate_quiz_questions(
     # PASS 2 — BLUEPRINTS
     # ----------------------------
     trimmed_claims = dict(claims_payload)
-    trimmed_claims["source_claims"] = trimmed_claims["source_claims"][:total_questions + 2]
+    trimmed_claims["source_claims"] = trimmed_claims["source_claims"][: total_questions + 2]
 
     blueprints_payload = generate_question_blueprints(
         quiz_id=quiz_id,
@@ -86,32 +165,108 @@ def generate_quiz_questions(
     )
 
     # ----------------------------
-    # PASS 3 — AUTHOR V2 WRITING
+    # PASS 3 — AUTHOR (SINGLE QUESTION)
     # ----------------------------
-    user_prompt = build_author_v2_user_prompt(
-        quiz_id=quiz_id,
-        source_paragraphs=source_paragraphs,
-        source_claims=source_claims,
-        blueprints=blueprints,
+    questions: List[Dict[str, Any]] = []
+
+    for idx, blueprint in enumerate(blueprints, start=1):
+        question_id = f"q{idx}"
+
+        user_prompt = build_author_single_user_prompt(
+            quiz_id=quiz_id,
+            question_id=question_id,
+            source_paragraphs=source_paragraphs,
+            source_claims=source_claims,
+            blueprint=blueprint,
+        )
+
+        prompt = AUTHOR_SINGLE_SYSTEM_PROMPT + "\n\n" + user_prompt
+
+        logger.info(
+            f"[V2] Author single-question invoked — quiz_id={quiz_id}, question={question_id}"
+        )
+
+        MAX_ATTEMPTS = 2
+        last_error: Exception | None = None
+
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+            try:
+                parsed_question = call_llm_json(
+                    prompt=prompt,
+                    stage_tag=f"Stage 2.8 Author Single (attempt {attempt})",
+                )
+
+                # Force correct question_id (LLM safety)
+                parsed_question["question_id"] = question_id
+
+                # 🔐 SINGLE-QUESTION VALIDATION
+                validate_single_question(
+                    question=parsed_question,
+                    question_id=question_id,
+                    quiz_id=quiz_id,
+                )
+
+                questions.append(parsed_question)
+
+                logger.info(
+                    f"[V2] Author completed — quiz_id={quiz_id}, question={question_id}, attempt={attempt}"
+                )
+                break
+
+            except Exception as e:
+                last_error = e
+                logger.warning(
+                    f"[V2] Author failed — quiz_id={quiz_id}, question={question_id}, attempt={attempt}"
+                )
+
+        else:
+            # All attempts failed
+            raise RuntimeError(
+                f"[V2] Author failed after {MAX_ATTEMPTS} attempts — "
+                f"quiz_id={quiz_id}, question={question_id}"
+            ) from last_error
+
+        logger.info(
+            f"[V2] Author completed — quiz_id={quiz_id}, question={question_id}"
+        )
+
+    # ----------------------------
+    # STEP 2 — ENFORCE ORDERING
+    # ----------------------------
+
+    questions_sorted = sorted(
+        questions,
+        key=lambda q: int(q["question_id"].replace("q", ""))
     )
 
-    prompt = AUTHOR_V2_SYSTEM_PROMPT + "\n\n" + user_prompt
+    expected_ids = [f"q{i}" for i in range(1, total_questions + 1)]
+    actual_ids = [q["question_id"] for q in questions_sorted]
+
+    if actual_ids != expected_ids:
+        raise ValueError(
+            f"[V2] Question ordering mismatch — quiz_id={quiz_id}, "
+            f"expected={expected_ids}, actual={actual_ids}"
+        )
+
+
+    # ----------------------------
+    # FINAL ASSEMBLY (DETERMINISTIC)
+    # ----------------------------
+    final_quiz = {
+        "quiz_id": quiz_id,
+        "questions": questions_sorted,
+    }
 
     logger.info(
-        f"[V2] Pass 3 (Author v2) invoked — quiz_id={quiz_id}, total_questions={total_questions}"
+        f"[V2] Quiz assembly complete — quiz_id={quiz_id}, questions={len(questions)}"
     )
 
-    parsed = call_llm_json(
-        prompt=prompt,
-        stage_tag="Stage 2.8 Author V2",
+    # ----------------------------
+    # POST-ASSEMBLY VALIDATION
+    # ----------------------------
+
+    validate_quiz_post_assembly(
+        quiz_payload=final_quiz
     )
 
-    parsed["quiz_id"] = quiz_id
-
-    logger.info(
-        f"[V2] Author v2 completed — quiz_id={quiz_id}"
-    )
-
-    return parsed
-
-
+    return final_quiz

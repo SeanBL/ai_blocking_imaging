@@ -1,0 +1,76 @@
+===== RAW MODEL OUTPUT =====
+{
+  "questions": [
+    {
+      "question_id": "q1",
+      "type": "mcq",
+      "prompt": "A community health program is onboarding a new community health worker (CHW) and wants to set up a peer mentorship. Which pairing best fits this model?",
+      "options": {
+        "A": "A CHW with several years in the same neighborhood program meets weekly with a newly hired CHW from that program to share practical guidance about doing the role in that community.",
+        "B": "Two newly hired CHWs of the same age are paired so they can motivate each other while learning the job together.",
+        "C": "The CHW’s supervisor schedules monthly check-ins focused on rating performance and determining whether the CHW should pass probation.",
+        "D": "A hospital-based pharmacist is assigned to mentor a CHW on medication counseling as part of an interprofessional education initiative."
+      },
+      "correct_answer": "A",
+      "rationale": "Peer mentorship involves a more experienced CHW guiding a less experienced CHW, typically within the same program or community, and they are considered peers because they share similar roles and challenges."
+    },
+    {
+      "question_id": "q2",
+      "type": "mcq",
+      "prompt": "In a community health worker (CHW) mentorship program, the mentor has more field experience than the mentee. In this context, what is the best interpretation of why this is still considered a “peer” mentorship?",
+      "options": {
+        "A": "They are peers because they work in similar roles and face similar on-the-job challenges, even if their experience differs.",
+        "B": "They are peers only if they have the same number of years working as CHWs.",
+        "C": "They are peers primarily because they are in the same age group.",
+        "D": "They are peers as long as they share the exact same job title, regardless of role expectations or challenges."
+      },
+      "correct_answer": "A",
+      "rationale": "In this model, “peer” refers to the mentor and mentee sharing similar roles and challenges, not having equal experience levels."
+    },
+    {
+      "question_id": "q3",
+      "type": "mcq",
+      "prompt": "In a peer mentorship program for community health workers (CHWs), which set of challenges is the mentor especially well-positioned to understand because the mentor has faced similar realities in the community?",
+      "options": {
+        "A": "Limited supplies and infrastructure, local cultural factors affecting care, and common health problems in the community",
+        "B": "Mainly completing administrative forms, scheduling meetings, and managing payroll processes",
+        "C": "Primarily explaining academic models of behavior change and research methodology with little emphasis on field conditions",
+        "D": "Focusing almost entirely on selecting and troubleshooting digital health tools and mobile applications"
+      },
+      "correct_answer": "A",
+      "rationale": "Mentors are described as having deep understanding of the specific challenges a mentee will encounter in the community, including resource limitations, cultural issues, and health problems."
+    },
+    {
+      "question_id": "q4",
+      "type": "mcq",
+      "prompt": "A newly hired community health worker (CHW) is struggling to navigate local cultural expectations and limited supplies during home visits. The program pairs them with a more experienced CHW from the same community. Which mentor response best fits the intended role of the mentor in this model?",
+      "options": {
+        "A": "Share practical, experience-based tips right away and help the new CHW decide what to do in similar situations going forward",
+        "B": "Refer the new CHW to written protocols only and avoid offering personal input to prevent inconsistency",
+        "C": "Document the new CHW’s mistakes for performance review and issue corrective actions when standards are not met",
+        "D": "Observe silently during visits and wait until the end of the month to provide general feedback"
+      },
+      "correct_answer": "A",
+      "rationale": "In this mentorship approach, the mentor is a trusted guide and advisor who can offer timely, real-world guidance drawn from their own community experience."
+    },
+    {
+      "question_id": "q5",
+      "type": "mcq",
+      "prompt": "A program director is deciding whether to invest time in a structured mentorship system for newly hired community health workers (CHWs). Which option best captures the expected impact of good mentorship on both the new CHW and the community?",
+      "options": {
+        "A": "It primarily supports the new CHW’s personal confidence, with little effect on community-facing services or training",
+        "B": "It tends to delay development of practical skills because new CHWs become dependent on guidance",
+        "C": "It builds the new CHW’s confidence and ability while also strengthening community services and training through a more capable CHW workforce",
+        "D": "It decreases the community’s service capacity by shifting experienced CHWs away from clinical work to mentoring"
+      },
+      "correct_answer": "C",
+      "rationale": "Good mentorship is described as increasing a new CHW’s confidence and competence and helping them learn skills and new material more quickly. The mentorship system is also presented as benefiting the community by resulting in more confident, skilled CHWs who provide clinical services and training programs."
+    },
+    {
+      "question_id": "q6",
+      "type": "mcq",
+      "prompt": "In the context of community health worker (CHW) mentorship, what does the term \"knowledge transfer\" mean?",
+      "options": {
+        "A": "Maintaining and clearly sharing useful know-how within the
+
+===== END =====
