@@ -53,7 +53,7 @@ def extract_quiz_source(
         # -----------------------------
         # ENGAGE slides
         # -----------------------------
-        elif slide_type == "engage":
+        elif slide_type in ("engage", "engage1", "engage2"):
             # Intro content
             intro = slide.get("intro", {})
             intro_content = intro.get("content", [])

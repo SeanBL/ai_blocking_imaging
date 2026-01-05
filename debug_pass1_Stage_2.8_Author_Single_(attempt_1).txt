@@ -1,0 +1,15 @@
+===== RAW MODEL OUTPUT =====
+{
+  "question_id": "q1",
+  "type": "mcq",
+  "prompt": "A community health program is onboarding a new community health worker (CHW). The coordinator wants to set up a peer mentorship arrangement. Which pairing best fits this goal?",
+  "options": {
+    "A": "A CHW with several years in the same neighborhood program meets weekly with a newly hired CHW from that program to share practical strategies for common day-to-day challenges.",
+    "B": "Two newly hired CHWs of the same age are paired so they can learn together and keep each other accountable.",
+    "C": "The CHW’s line manager schedules monthly check-ins focused on rating performance and determining whether the CHW passes probation.",
+    "D": "A hospital-based nurse who does not work in the community program is assigned to mentor the CHW on clinical topics.",
+    "correct_answer": "A",
+    "rationale": "Peer mentorship involves an experienced CHW guiding a less experienced CHW, typically within the same program or community, and they are considered peers because they share similar roles and challenges."
+}
+
+===== END =====

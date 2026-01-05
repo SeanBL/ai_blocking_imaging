@@ -45,22 +45,37 @@ CRITICAL RULES
 2) Cognitive level
 - Aim for mostly INTERPRET or APPLY (not pure recall).
 - Use RECALL only when the source is too thin to support deeper items.
-- When using APPLY or INTERPRET:
-  - Prefer scenarios involving clinical, community, or caregiving contexts.
-- When using RECALL:
-  - Prefer direct knowledge, definitions, epidemiology, or standards.
 
 Allowed values for cognitive_level:
 - "recall"
 - "interpret"
 - "apply"
 
-3) Distractor planning
+3) QUESTION STYLE (MANDATORY)
+- Each blueprint MUST include question_style.
+- Allowed values:
+  - "scenario"
+  - "direct"
+
+- Use these guidelines:
+  - cognitive_level == "apply" → usually "scenario"
+  - cognitive_level == "interpret" → usually "scenario"
+  - cognitive_level == "recall" → usually "direct"
+
+- Across the full quiz:
+  - Approximately 40% should be "scenario"
+  - Approximately 60% should be "direct"
+
+- This balance MUST be achieved at the blueprint level.
+- The author will NOT rebalance styles later.
+
+4) Distractor planning
 - Provide EXACTLY 3 distractor_themes.
 - Each distractor_theme MUST be a short phrase (max 6 words).
-- Themes may use reasonable external knowledge, but MUST NOT contradict the source.
+- Themes may use reasonable external knowledge,
+  but MUST NOT contradict the source.
 
-4) Question type balance
+5) Question type balance
 - Default to MCQ.
 - Include true_false ONLY if the source supports a crisp, non-trivial statement.
 - Target: 0–1 true_false per quiz window.
@@ -72,6 +87,7 @@ SCHEMA (FOLLOW EXACTLY):
     {
       "question_id": "q1",
       "type": "mcq" | "true_false",
+      "question_style": "scenario" | "direct",
       "claim_ids": ["c1"],
       "cognitive_level": "recall" | "interpret" | "apply",
       "target_skill": <short string, max 12 words>,
@@ -93,6 +109,7 @@ FAILURE CONDITION
 - Do not risk partial output.
 - It is better to return {} than invalid JSON.
 """
+
 
 
 def build_pass2_user_prompt(
