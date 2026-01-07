@@ -5,7 +5,8 @@ data/raw/*.pdf
 data/raw/*.jpg
 data/raw/*.png
 data/final/
-
+data/exports/
+data/quiz_benchmark/
 
 # Byte-compiled files
 __pycache__/
