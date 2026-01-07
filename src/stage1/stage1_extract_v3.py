@@ -71,6 +71,7 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
     engage1_mode = False
     engage1_intro_row_pending = False
     collecting_button_labels = False
+    engage1_single_image_mode = False
 
     engage_intro_parts: List[str] = []
     engage_intro_image: str | None = None
@@ -163,7 +164,10 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
             # -------------------------------
             # Start of slide
             # -------------------------------
-            if first_cell.lower().startswith("slide (header)"):
+            if (
+                first_cell.lower().startswith("slide (header)")
+                or first_cell.lower().startswith("header:")
+            ):
                 if slide:
                     finalize_slide(slide, columns)
                     module["slides"].append(slide)
@@ -181,7 +185,7 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
                 # reset Engage1 state for new slide
                 engage1_mode = False
                 engage1_intro_row_pending = False
-                collecting_button_labels = False
+                engage1_single_image_mode = False
                 engage_intro_parts = []
                 engage_intro_image = None
                 engage_items = []
@@ -257,6 +261,10 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
                         engage_intro_parts.extend(eng_texts)
                     if notes_texts:
                         engage_intro_notes.extend(notes_texts)
+                        # Detect the "single image fixed location" Engage1 variant
+                        blob_notes = " ".join(t.lower() for t in notes_texts)
+                        if "single image in fixed location" in blob_notes:
+                            engage1_single_image_mode = True
                     # after this row, intro is done; following rows are items
                     engage1_intro_row_pending = False
                     row_idx += 1
@@ -268,6 +276,20 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
                         "button_label": None,
                         "image": " ".join(img_texts).strip(),
                         "body": list(eng_texts) if eng_texts else [],
+                        "notes": "\n".join(notes_texts).strip() if notes_texts else None,
+                    }
+                    engage_items.append(item)
+                    row_idx += 1
+                    continue
+
+                # ✅ NEW: "single image fixed location" variant
+                # If the slide uses one fixed image, item rows may have NO image text.
+                # In that case, each english-text row becomes an item.
+                if engage1_single_image_mode and eng_texts:
+                    item = {
+                        "button_label": None,
+                        "image": None,
+                        "body": list(eng_texts),
                         "notes": "\n".join(notes_texts).strip() if notes_texts else None,
                     }
                     engage_items.append(item)
@@ -331,16 +353,54 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
 def main() -> None:
     import argparse
 
-    parser = argparse.ArgumentParser(description="Stage 1 v3 extractor (fixed bullets + no loss)")
-    parser.add_argument("--in", dest="in_path", required=True)
-    parser.add_argument("--out", dest="out_path", required=True)
+    parser = argparse.ArgumentParser(
+        description="Stage 1 v3 extractor (fixed bullets + no loss)"
+    )
+
+    parser.add_argument("--in", dest="in_path", required=False)
+    parser.add_argument("--out", dest="out_path", required=False)
+
     args = parser.parse_args()
 
-    module = extract_tables_v3(Path(args.in_path))
-    Path(args.out_path).write_text(
+    # ----------------------------------------
+    # AUTO-DETECT INPUT DOCX IF NOT PROVIDED
+    # ----------------------------------------
+    raw_dir = Path("data/raw")
+
+    if not args.in_path:
+        docx_files = list(raw_dir.glob("*.docx"))
+
+        if len(docx_files) == 0:
+            raise SystemExit("❌ No Word documents found in data/raw")
+
+        if len(docx_files) > 1:
+            raise SystemExit(
+                f"❌ Multiple Word documents found in data/raw: {[f.name for f in docx_files]}"
+            )
+
+        input_path = docx_files[0]
+    else:
+        input_path = Path(args.in_path)
+
+    # ----------------------------------------
+    # DETERMINE OUTPUT PATH
+    # ----------------------------------------
+    if args.out_path:
+        output_path = Path(args.out_path)
+    else:
+        output_path = Path("data/processed/module_v3.json")
+
+    # run extraction
+    module = extract_tables_v3(input_path)
+
+    # write output
+    output_path.write_text(
         json.dumps(module, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
+
+    print(f"✅ Using input: {input_path.name}")
+    print(f"✅ Output written to: {output_path}")
     print(f"✅ Extracted {len(module['slides'])} slides")
 
 

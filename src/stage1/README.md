@@ -233,6 +233,5 @@ Missing terminator	Incomplete quiz range	Store	Error
 
 This stage is **LOCKED** by design.
 
-python src/stage1/stage1_extract_v3.py \
-  --in data/raw/mentorship_AI_QUIZ_GENERATION.docx \
-  --out data/processed/module_v3.json
+python src/stage1/stage1_extract_v3.py
+

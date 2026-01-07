@@ -104,6 +104,18 @@ def normalize_ws(s: Any) -> str:
     s = " ".join(s.split())
     return s.strip()
 
+def parse_stage2_signals(notes: Optional[str]) -> Dict[str, bool]:
+    """
+    Parses instructional signals from Stage 1 notes.
+    Stage 2 ONLY reads these; Stage 1 already preserved them verbatim.
+    """
+    notes = (notes or "").lower()
+
+    return {
+        "locked": "[[locked]]" in notes,
+        "create_engage1": "[[create:engage1]]" in notes,
+        "create_engage2": "[[create:engage2]]" in notes,
+    }
 
 def normalize_paragraph_list(x: Any) -> List[str]:
     """
@@ -612,11 +624,34 @@ def apply_engage1_button_labels(
 
 def transform_slide(slide: Dict[str, Any], index: int) -> Dict[str, Any]:
     """
-    STEP 3B: Routing + flat unpacking.
+    STEP 3B: Routing + flat unpacking + signal-aware control.
     """
+
+    notes = slide.get("notes")
+    signals = parse_stage2_signals(notes)
+
+    # --------------------------------------------------
+    # HARD STOP: LOCKED means absolutely no transformation
+    # --------------------------------------------------
+    if signals["locked"]:
+        ensure_uuid(slide, index)
+        slide_out = dict(slide)
+        slide_out["type"] = normalize_ws(slide.get("slide_type")) or "panel"
+        return slide_out
+
     slide_type = normalize_ws(slide.get("slide_type")).lower()
 
+    # --------------------------------------------------
+    # PANEL routing
+    # --------------------------------------------------
     if slide_type == "panel":
+        # Explicit instruction to CREATE an Engage 1
+        if signals["create_engage1"]:
+            flat = normalize_engage_flat(slide, index, "engage")
+            structured = normalize_engage1_structure(flat, index)
+            return apply_engage1_button_labels(structured, slide)
+
+        # Default panel behavior
         return normalize_panel(slide, index)
 
     if slide_type == "engage1":
