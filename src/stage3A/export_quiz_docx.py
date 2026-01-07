@@ -13,6 +13,8 @@ from docx.shared import Pt
 INPUT_PATH = Path("data/processed/quiz_flattened_stage2_9_2.json")
 OUTPUT_PATH = Path("data/exports/quiz_questions.docx")
 
+PLACEMENT_ORDER = ["inline", "application", "final"]
+
 
 def load_questions(path: Path) -> List[Dict[str, Any]]:
     with path.open("r", encoding="utf-8") as f:
@@ -59,10 +61,12 @@ def write_question(
         answer = "True" if question["correct_answer"] is True else "False"
         doc.add_paragraph(f"Correct Answer: {answer}")
 
+    else:
+        raise ValueError(f"Unknown question type: {q_type}")
+
     doc.add_paragraph("Rationale:")
     doc.add_paragraph(question["rationale"])
     doc.add_paragraph("")
-
 
 
 def export_quizzes_to_docx(
@@ -76,11 +80,38 @@ def export_quizzes_to_docx(
     for q in questions:
         quizzes[q["quiz_id"]].append(q)
 
-    for quiz_id, quiz_questions in quizzes.items():
+    for quiz_id in sorted(quizzes.keys()):
+        quiz_questions = quizzes[quiz_id]
+
         write_quiz_header(doc, quiz_id)
 
-        for idx, question in enumerate(quiz_questions, start=1):
-            write_question(doc, idx, question)
+        # Group by placement
+        by_placement: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        for q in quiz_questions:
+            by_placement[q.get("placement", "unknown")].append(q)
+
+        question_counter = 1
+
+        for placement in PLACEMENT_ORDER:
+            section_questions = by_placement.get(placement)
+            if not section_questions:
+                continue
+
+            # Placement-specific section titles
+            if placement == "inline":
+                section_title = f"Inline Quiz {quiz_id}"
+            elif placement == "application":
+                section_title = "Application Questions"
+            elif placement == "final":
+                section_title = "Final Questions"
+            else:
+                section_title = placement.title()
+
+            doc.add_heading(section_title, level=2)
+
+            for q in section_questions:
+                write_question(doc, question_counter, q)
+                question_counter += 1
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     doc.save(output_path)

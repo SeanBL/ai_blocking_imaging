@@ -62,12 +62,28 @@ Allowed values for cognitive_level:
   - cognitive_level == "interpret" → usually "scenario"
   - cognitive_level == "recall" → usually "direct"
 
-- Across the full quiz:
-  - Approximately 40% should be "scenario"
-  - Approximately 60% should be "direct"
+  QUIZ ROLE RULES (MANDATORY)
 
-- This balance MUST be achieved at the blueprint level.
-- The author will NOT rebalance styles later.
+For EACH quiz marker (e.g., [[QUIZ:1:QUESTIONS=3,3]]):
+
+- Create EXACTLY:
+  - 3 blueprints with quiz_role = "inline_direct"
+  - 3 blueprints with quiz_role = "final_direct"
+  - 1 blueprint with quiz_role = "module_application"
+
+ROLE CONSTRAINTS
+
+- "module_application" blueprint MUST:
+  - cognitive_level = "apply"
+  - question_style = "scenario"
+  - assess a key or main concept from the source claims
+
+- ALL "inline_direct" and "final_direct" blueprints MUST:
+  - question_style = "direct"
+  - cognitive_level = "recall" OR "interpret"
+
+- Do NOT create more than one "module_application" blueprint.
+- Do NOT assign scenario questions to inline or final_direct roles.
 
 4) Distractor planning
 - Provide EXACTLY 3 distractor_themes.
@@ -87,6 +103,7 @@ SCHEMA (FOLLOW EXACTLY):
     {
       "question_id": "q1",
       "type": "mcq" | "true_false",
+      "quiz_role": "inline_direct" | "final_direct" | "module_application",
       "question_style": "scenario" | "direct",
       "claim_ids": ["c1"],
       "cognitive_level": "recall" | "interpret" | "apply",
@@ -111,7 +128,6 @@ FAILURE CONDITION
 """
 
 
-
 def build_pass2_user_prompt(
     *,
     quiz_id: int,
@@ -123,6 +139,8 @@ def build_pass2_user_prompt(
     return f"""Quiz ID: {quiz_id}
 
 Create EXACTLY {total_questions} blueprints: q1..q{total_questions}
+
+Follow ALL quiz_role rules exactly.
 
 Return ONLY JSON matching the schema.
 

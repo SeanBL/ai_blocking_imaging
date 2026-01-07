@@ -22,17 +22,25 @@ def flatten_quizzes(module_json: Dict[str, Any]) -> List[Dict[str, Any]]:
         quiz_id = slide.get("quiz_id")
         placement = slide.get("placement", "unknown")
 
+        # 🔒 HARD ASSERT — quiz slide must have questions
+        questions = slide.get("questions", [])
+        if not questions:
+            raise RuntimeError(
+                f"Stage 2.9.2: quiz slide has no questions — "
+                f"quiz_id={quiz_id}, placement={placement}, slide_index={slide_index}"
+            )
+
         for q_index, q in enumerate(slide.get("questions", [])):
             row: Dict[str, Any] = {
                 "quiz_id": quiz_id,
                 "placement": placement,
                 "slide_index": slide_index,
+                "question_index": q_index,  # ✅ ADD THIS
 
                 "question_id": q.get("question_id"),
                 "question_type": q.get("type"),
                 "prompt": q.get("prompt"),
 
-                # MCQ options (may be None for true/false)
                 "option_A": q.get("options", {}).get("A"),
                 "option_B": q.get("options", {}).get("B"),
                 "option_C": q.get("options", {}).get("C"),
@@ -41,6 +49,7 @@ def flatten_quizzes(module_json: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "correct_answer": q.get("correct_answer"),
                 "rationale": q.get("rationale"),
             }
+
 
             rows.append(row)
 

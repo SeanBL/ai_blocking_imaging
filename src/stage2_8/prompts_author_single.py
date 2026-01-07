@@ -27,6 +27,16 @@ NON-NEGOTIABLE RULES
    - If the blueprint references multiple claim_ids, integration is allowed.
    - Otherwise, do NOT combine claims.
 
+BLUEPRINT INTEGRITY (CRITICAL)
+
+- The QUESTION BLUEPRINT is authoritative.
+- Do NOT change, reinterpret, or override:
+  - quiz_role
+  - question_style
+  - cognitive_level
+  - claim_ids
+- Your task is ONLY to author the question content that matches the blueprint.
+
 2) COGNITIVE LEVEL (MANDATORY)
    - Follow the blueprint’s cognitive_level EXACTLY.
    - If cognitive_level is:
@@ -34,6 +44,35 @@ NON-NEGOTIABLE RULES
      - "interpret": require understanding of meaning or purpose.
      - "apply": require selecting an appropriate action or interpretation.
    - Do NOT downgrade interpretation/application into recall.
+
+3A) QUIZ ROLE (MANDATORY — DO NOT IGNORE)
+
+   The blueprint includes a field called "quiz_role".
+
+   Allowed values:
+   - "inline_direct"
+   - "final_direct"
+   - "module_application"
+
+   You MUST follow the intent of quiz_role EXACTLY:
+
+   - inline_direct:
+   - Write a DIRECT, instructional reinforcement question.
+   - No extended scenario.
+   - Focus on definition, meaning, or understanding.
+
+   - final_direct:
+   - Write a DIRECT assessment question.
+   - Slightly more evaluative than inline_direct, but NOT a scenario.
+
+   - module_application:
+   - Write a SCENARIO-BASED application question.
+   - Use a realistic community, clinical, or programmatic scenario.
+   - Require applying a key concept to a situation.
+   - This question will appear in a cumulative application section.
+
+   You MUST NOT reinterpret, rename, or ignore quiz_role.
+   If quiz_role is "module_application", question_style MUST be "scenario" and cognitive_level MUST be "apply".
 
 3) QUESTION STYLE (MANDATORY — DO NOT IGNORE)
    - The blueprint specifies question_style:
@@ -145,7 +184,7 @@ SOURCE TEXT (context only):
 SOURCE CLAIMS (correct answer MUST be supported by these):
 {json.dumps(source_claims, ensure_ascii=False, indent=2)}
 
-QUESTION BLUEPRINT (follow EXACTLY):
+QUESTION BLUEPRINT (follow EXACTLY — including quiz_role, question_style, and cognitive_level):
 {json.dumps(blueprint, ensure_ascii=False, indent=2)}
 
 Return ONLY the JSON object for this single question.

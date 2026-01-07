@@ -4,14 +4,35 @@ from typing import Any, Dict, List, Set
 
 
 ALLOWED_QUESTION_KEYS: Set[str] = {
+    # Core assessment fields
     "question_id",
     "type",
     "prompt",
     "options",
     "correct_answer",
     "rationale",
+
+    # 🔒 Role + pedagogy metadata (NEW, REQUIRED)
+    "quiz_role",
+    "question_style",
+    "cognitive_level",
+    "claim_ids",
 }
 
+REQUIRED_QUESTION_KEYS: Set[str] = {
+    # Core
+    "question_id",
+    "type",
+    "prompt",
+    "correct_answer",
+    "rationale",
+
+    # Pedagogical metadata (MANDATORY)
+    "quiz_role",
+    "question_style",
+    "cognitive_level",
+    "claim_ids",
+}
 
 def validate_quiz_payload(
     payload: Dict[str, Any],
@@ -50,6 +71,13 @@ def validate_quiz_payload(
         # ------------------------
         # STRICT SCHEMA
         # ------------------------
+        
+        missing = REQUIRED_QUESTION_KEYS - set(q.keys())
+        if missing:
+            raise ValueError(
+                f"Question {idx} missing required keys: {sorted(missing)}"
+            )
+        
         extra = set(q.keys()) - ALLOWED_QUESTION_KEYS
         if extra:
             raise ValueError(

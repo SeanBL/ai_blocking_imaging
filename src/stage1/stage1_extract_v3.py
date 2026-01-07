@@ -1,3 +1,16 @@
+"""
+STAGE 1 INVARIANT CONTRACT (DO NOT VIOLATE)
+
+Stage 1 is a STRUCTURAL extractor only.
+
+INVARIANTS:
+1. Paragraphs in Word are preserved as paragraphs in JSON.
+2. Bulleted / numbered lists explicitly marked by Word are preserved as bullets.
+3. Mixed prose + bullets in the same cell are preserved in order.
+4. Stage 1 NEVER infers bullets, engages, or pedagogy.
+
+If any invariant is broken, downstream stages become unreliable.
+"""
 from __future__ import annotations
 
 import json
@@ -12,6 +25,22 @@ def normalize(text: str) -> str:
         return ""
     return " ".join(text.replace("\u00A0", " ").split()).strip()
 
+
+def is_list_paragraph(p) -> bool:
+    """
+    True if Word explicitly marks this paragraph as a list item.
+    Covers both styled lists and numbered/bulleted lists.
+    """
+    if p.style and p.style.name == "List Paragraph":
+        return True
+
+    pPr = p._p.pPr
+    if pPr is not None and pPr.numPr is not None:
+        return True
+
+    return False
+
+
 def canonical_col_label(raw: str) -> str:
     """
     Normalize table column headers so extraction is stable across
@@ -19,11 +48,9 @@ def canonical_col_label(raw: str) -> str:
     """
     t = normalize(raw).lower()
 
-    # strip anything after slash, e.g. ".../translations"
     if "/" in t:
         t = t.split("/", 1)[0].strip()
 
-    # common canonical mappings
     if t.startswith("notes and instructions"):
         return "notes and instructions"
     if t.startswith("english text"):
@@ -31,42 +58,7 @@ def canonical_col_label(raw: str) -> str:
     if t.startswith("image"):
         return "image"
 
-    # keep other labels as-is
     return t
-
-def looks_like_intro_cue(text: str) -> bool:
-    t = text.strip().lower()
-    if not t:
-        return False
-
-    # strong cue: ends with colon
-    if t.endswith(":"):
-        return True
-
-    # common instructional cues seen in your modules
-    cues = [
-        "for example",
-        "will focus on",
-        "you will be able to",
-        "the following",
-        "include",
-        "includes",
-        "are",
-        "are the",
-        "the main objectives",
-        "main objectives",
-        "will be able",
-        "will learn",
-        "will discuss",
-        "focuses on",
-    ]
-    return any(cue in t for cue in cues)
-
-
-def looks_like_bullet_item(text: str) -> bool:
-    # keep this simple and robust: bullets are usually not huge paragraphs
-    # (allows full sentences, but blocks very long prose)
-    return len(text) <= 220
 
 
 def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
@@ -75,8 +67,19 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
     module = {"module_title": docx_path.stem, "slides": []}
     slide_index = 0
 
+    # Engage1 per-slide state (reset when new slide starts)
+    engage1_mode = False
+    engage1_intro_row_pending = False
+    collecting_button_labels = False
+
+    engage_intro_parts: List[str] = []
+    engage_intro_image: str | None = None
+    engage_items: List[Dict[str, Any]] = []
+    engage_intro_notes: List[str] = []
+
+
     def finalize_slide(slide, columns):
-        notes_parts = []
+        notes_parts: List[str] = []
         notes_parts.extend(columns.get("notes and instructions", []))
         notes_parts.extend(columns.get("notes and instructions__bullets", []))
         notes = "\n".join(notes_parts).strip()
@@ -90,13 +93,44 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
         else:
             slide["slide_type"] = "panel"
 
-        if "image" in columns and columns["image"]:
-            img = " ".join(columns["image"])
-            if img.lower() != "button labels":
-                slide["image"] = img
+        # Only suppress slide-level image for Engage1
+        if slide["slide_type"] == "engage1":
+            slide["image"] = None
+        else:
+            # Preserve normal panel images (existing Stage 1 behavior)
+            if "image" in columns and columns["image"]:
+                img = " ".join(columns["image"]).strip()
+                slide["image"] = img if img else None
 
+        # -------------------------------
+        # ENGAGE 1 output (ROW-BASED, FROM INSPECTION OUTPUT)
+        # -------------------------------
+        if slide["slide_type"] == "engage1":
+            # bind button labels -> items in order
+            labels: List[str] = []
+            for txt in columns.get("button labels", []):
+                # your docs show one label per row, but we allow pipes too
+                labels.extend([p.strip() for p in txt.split("|") if p.strip()])
+
+            if labels:
+                for i, item in enumerate(engage_items):
+                    if i < len(labels):
+                        item["button_label"] = labels[i]
+
+            slide["content"] = {
+                "intro": {
+                    "text": "\n".join(engage_intro_parts).strip(),
+                    "image": engage_intro_image,
+                    "notes": "\n".join(engage_intro_notes).strip() or None,
+                },
+                "items": engage_items,
+            }
+            return  # DO NOT fall through
+
+        # -------------------------------
+        # PANEL / other types output (existing behavior)
+        # -------------------------------
         blocks = []
-
         for txt in columns.get("english text", []):
             blocks.append({"type": "paragraph", "text": txt})
 
@@ -106,7 +140,7 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
 
         slide["content"]["blocks"] = blocks
 
-        if slide["slide_type"] in ("engage1", "engage2"):
+        if slide["slide_type"] == "engage2":
             labels = []
             for txt in columns.get("button labels", []):
                 labels.extend([p.strip() for p in txt.split("|") if p.strip()])
@@ -119,14 +153,16 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
 
         row_idx = 0
         slide = None
-        columns = {}
-        col_labels = []
-        in_button_labels = False
+        columns: Dict[str, List[str]] = {}
+        col_labels: List[str] = []
 
         while row_idx < len(tbl.rows):
             row = tbl.rows[row_idx]
             first_cell = normalize(row.cells[0].text)
 
+            # -------------------------------
+            # Start of slide
+            # -------------------------------
             if first_cell.lower().startswith("slide (header)"):
                 if slide:
                     finalize_slide(slide, columns)
@@ -142,15 +178,119 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
                     "content": {"blocks": []},
                 }
 
+                # reset Engage1 state for new slide
+                engage1_mode = False
+                engage1_intro_row_pending = False
+                collecting_button_labels = False
+                engage_intro_parts = []
+                engage_intro_image = None
+                engage_items = []
+                engage_intro_notes = []
+
                 label_row = tbl.rows[row_idx + 1]
                 col_labels = [canonical_col_label(c.text) for c in label_row.cells]
                 columns = {label: [] for label in col_labels if label}
-                in_button_labels = False
 
                 row_idx += 2
                 continue
 
-            # content row
+            # -------------------------------
+            # Build row-wise texts per column (so Engage1 can be row-based)
+            # -------------------------------
+            row_texts: Dict[str, List[str]] = {}
+            for idx, cell in enumerate(row.cells):
+                if idx >= len(col_labels):
+                    continue
+                label = col_labels[idx]
+                if not label:
+                    continue
+                texts = [normalize(p.text) for p in cell.paragraphs if normalize(p.text)]
+                if texts:
+                    row_texts[label] = texts
+
+            img_texts = row_texts.get("image", [])
+            eng_texts = row_texts.get("english text", [])
+            notes_texts = row_texts.get("notes and instructions", [])
+
+            # Always preserve NOTES structurally (stage-level notes output)
+            # This matches what your pipeline has already been doing.
+            if notes_texts:
+                columns.setdefault("notes and instructions", []).extend(notes_texts)
+
+            # -------------------------------
+            # Engage1 detection: INTRO ROW is the row whose NOTES contains "Slide Type = Engage 1"
+            # (This is EXACTLY what your inspection output shows.)
+            # -------------------------------
+            if notes_texts:
+                blob = " ".join(t.lower() for t in notes_texts)
+                if "slide type = engage 1" in blob:
+                    engage1_mode = True
+                    engage1_intro_row_pending = True
+                    collecting_button_labels = False
+
+            # -------------------------------
+            # ENGAGE 1 ROW-BASED PARSING
+            # -------------------------------
+            if engage1_mode:
+                # Button labels block starts when Image cell == "Button Labels"
+                if img_texts and img_texts[0].strip().lower() == "button labels":
+                    collecting_button_labels = True
+
+                    # IMPORTANT: the first label is on THIS SAME ROW in your docs
+                    if eng_texts:
+                        columns.setdefault("button labels", []).extend(eng_texts)
+
+                    row_idx += 1
+                    continue
+
+                if collecting_button_labels:
+                    if eng_texts:
+                        columns.setdefault("button labels", []).extend(eng_texts)
+                    row_idx += 1
+                    continue
+
+                # Intro row: store intro image + intro text
+                if engage1_intro_row_pending:
+                    if img_texts:
+                        engage_intro_image = " ".join(img_texts).strip() or engage_intro_image
+                    if eng_texts:
+                        engage_intro_parts.extend(eng_texts)
+                    if notes_texts:
+                        engage_intro_notes.extend(notes_texts)
+                    # after this row, intro is done; following rows are items
+                    engage1_intro_row_pending = False
+                    row_idx += 1
+                    continue
+
+                # Item rows: each row with an image is a new item
+                if img_texts:
+                    item = {
+                        "button_label": None,
+                        "image": " ".join(img_texts).strip(),
+                        "body": list(eng_texts) if eng_texts else [],
+                        "notes": "\n".join(notes_texts).strip() if notes_texts else None,
+                    }
+                    engage_items.append(item)
+                    row_idx += 1
+                    continue
+
+                # If a row has no image but has english text, append to last item body
+                if eng_texts and engage_items:
+                    engage_items[-1]["body"].extend(eng_texts)
+
+                # If a row has notes but no image, attach to last item notes
+                if notes_texts and engage_items and not img_texts:
+                    existing = engage_items[-1].get("notes")
+                    extra = "\n".join(notes_texts).strip()
+                    if extra:
+                        engage_items[-1]["notes"] = (existing + "\n" + extra).strip() if existing else extra
+
+                row_idx += 1
+                continue
+
+            # -------------------------------
+            # DEFAULT (NON-ENGAGE1) parsing: keep your existing bullet logic intact
+            # -------------------------------
             for idx, cell in enumerate(row.cells):
                 if idx >= len(col_labels):
                     continue
@@ -158,55 +298,26 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
                 if not label:
                     continue
 
-                # gather paragraph objects (not just text) so we can separate list vs non-list
                 paras = [p for p in cell.paragraphs if normalize(p.text)]
                 if not paras:
                     continue
 
-                # button labels marker row
-                first_text = normalize(paras[0].text).lower()
-                if first_text == "button labels" and idx == 0:
-                    in_button_labels = True
-                    continue
-
-                if in_button_labels and label == "english text":
-                    columns.setdefault("button labels", []).extend(normalize(p.text) for p in paras)
-                    continue
-
-                # --- FIX #1: handle mixed list + non-list paragraphs in same cell ---
-                list_items = []
-                non_list = []
+                list_items: List[str] = []
+                non_list: List[str] = []
                 for p in paras:
                     txt = normalize(p.text)
-                    if p.style and p.style.name == "List Paragraph":
+                    if is_list_paragraph(p):
                         list_items.append(txt)
                     else:
                         non_list.append(txt)
 
                 if list_items:
-                    # keep intro/non-list paragraphs AND bullets
                     if non_list:
                         columns[label].extend(non_list)
                     columns.setdefault(label + "__bullets", []).extend(list_items)
                     continue
 
-                # --- FIX #2: only infer bullets when structure strongly suggests it ---
-                texts = [normalize(p.text) for p in paras if normalize(p.text)]
-
-                if label == "english text":
-                    # Find a trailing run of 2+ candidate bullet items
-                    # Example pattern: [intro, item, item, item]
-                    if len(texts) >= 3:
-                        intro = texts[0]
-                        tail = texts[1:]
-
-                        if looks_like_intro_cue(intro) and len(tail) >= 2 and all(looks_like_bullet_item(t) for t in tail):
-                            columns[label].append(intro)
-                            columns.setdefault(label + "__bullets", []).extend(tail)
-                            continue
-
-                # default: all are paragraphs
-                columns[label].extend(texts)
+                columns[label].extend(non_list)
 
             row_idx += 1
 
@@ -235,4 +346,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

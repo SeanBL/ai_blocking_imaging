@@ -1,4 +1,3 @@
-# src/stage2_9/stage2_9_main.py
 from __future__ import annotations
 
 import json
@@ -24,27 +23,53 @@ def write_json(path: Path, data: Dict[str, Any]) -> None:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
-def process_quiz(quiz: Dict[str, Any]) -> Dict[str, Any]:
-    quiz_id = quiz["quiz_id"]
+def process_quiz_slide(slide: Dict[str, Any]) -> None:
+    """
+    Normalize + randomize questions inside an existing quiz slide.
+    """
+    quiz_id = slide.get("quiz_id")
 
-    for q in quiz["questions"]:
-        qid = q["question_id"]
+    if not quiz_id:
+        raise ValueError("Quiz slide missing quiz_id")
 
-        q = normalize_question(q)
+    for q in slide.get("questions", []):
+        qid = q.get("question_id")
+
+        normalize_question(q)
 
         if q["type"] == "mcq":
             seed = f"{quiz_id}_{qid}"
             randomize_mcq(question=q, seed=seed)
 
-    return quiz
-
 
 def main() -> None:
     module = load_json(INPUT_PATH)
 
-    for slide in module.get("slides", []):
-        if slide.get("slide_type") == "quiz":
-            process_quiz(slide)
+    quiz_slides = [
+        s for s in module.get("slides", [])
+        if s.get("slide_type") == "quiz"
+    ]
+
+    if not quiz_slides:
+        raise RuntimeError(
+            "Stage 2.9 invariant violated: "
+            "no quiz slides found in module_stage2_8.json"
+        )
+
+    application_seen = False
+
+    for slide in quiz_slides:
+        if slide.get("placement") == "application":
+            application_seen = True
+        process_quiz_slide(slide)
+
+    # 🔒 HARD ASSERTION
+    if not application_seen:
+        raise RuntimeError(
+            "Stage 2.9 invariant violated: "
+            "no application quiz slide found. "
+            "Stage 2.8 MAIN failed to insert it."
+        )
 
     write_json(OUTPUT_PATH, module)
     print(f"[Stage 2.9] Wrote {OUTPUT_PATH}")
@@ -52,3 +77,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
