@@ -1,80 +1,91 @@
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict, List, Any, Set
 
 from .logger import logger
 from .llm_quiz import generate_quiz_questions
 from .validate_quiz_output import validate_quiz_payload
 from .quiz_quality_review import review_quiz_quality
 from .apply_reviewer_fixes import apply_reviewer_fixes
-from .editor_llm import run_editor_llm
+from .editor_llm import run_editor_llm_single_question
+
+
+# Must match what validate_quiz_payload expects to exist per question
+REQUIRED_QUESTION_KEYS: Set[str] = {
+    "question_id",
+    "type",
+    "prompt",
+    "correct_answer",
+    "rationale",
+    "quiz_role",
+    "question_style",
+    "cognitive_level",
+    "claim_ids",
+    # "options" is conditionally required (mcq) and forbidden (true_false),
+    # so we do NOT include it in this unconditional set.
+}
 
 
 def run_quiz_pipeline(
     *,
     quiz_id: int,
-    total_questions: int,
+    inline_direct_questions: int,
+    final_direct_questions: int,
+    module_application_questions: int = 1,
     source_paragraphs: List[str],
-) -> Dict[str, any]:
+) -> Dict[str, Any]:
     """
     Runs Stage 2.8 quiz generation with:
-    - Author → Reviewer → Deterministic Fixer → (optional) Editor LLM
-    - Single retry max
-    - Deterministic, logged, schema-validated flow
+    Author → Reviewer → Deterministic Fixer → Single-question Editor (one pass) → Re-review → Hard stop
     """
 
-    logger.info(
-        f"Stage 2.8 quiz pipeline started — quiz_id={quiz_id}"
+    logger.info(f"Stage 2.8 quiz pipeline started — quiz_id={quiz_id}")
+
+    # -------------------------------------------------
+    # Question count invariants
+    # -------------------------------------------------
+    total_questions = (
+        inline_direct_questions
+        + final_direct_questions
+        + module_application_questions
     )
 
-    # -------------------------------------------------
-    # Adjust question count based on content volume
-    # -------------------------------------------------
     max_allowed = max(1, len(source_paragraphs) * 2)
-
     if total_questions > max_allowed:
-        logger.warning(
-            f"Reducing quiz question count due to limited content — "
+        raise ValueError(
+            f"Requested quiz questions exceed content capacity — "
             f"quiz_id={quiz_id}, requested={total_questions}, allowed={max_allowed}"
         )
-        total_questions = max_allowed
 
     # -------------------------------------------------
-    # 1️⃣ AUTHOR — generate quiz
+    # 1) AUTHOR
     # -------------------------------------------------
     quiz = generate_quiz_questions(
         quiz_id=quiz_id,
-        total_questions=total_questions,
         source_paragraphs=source_paragraphs,
+        inline_direct_questions=inline_direct_questions,
+        final_direct_questions=final_direct_questions,
+        module_application_questions=module_application_questions,
     )
 
-    # -------------------------------------------------
-    # Normalize question count if author under-generates
-    # -------------------------------------------------
-    actual_count = len(quiz.get("questions", []))
+    if "questions" not in quiz or not isinstance(quiz["questions"], list):
+        raise ValueError(f"Author returned invalid quiz schema — quiz_id={quiz_id}")
 
-    if actual_count < total_questions:
-        logger.warning(
-            f"Author under-generated questions — "
-            f"quiz_id={quiz_id}, requested={total_questions}, actual={actual_count}"
+    if len(quiz["questions"]) != total_questions:
+        raise ValueError(
+            f"Author question count mismatch — quiz_id={quiz_id}, "
+            f"expected={total_questions}, actual={len(quiz['questions'])}"
         )
-        total_questions = actual_count
 
-    # -------------------------------------------------
-    # 2️⃣ STRUCTURAL VALIDATION
-    # -------------------------------------------------
     validate_quiz_payload(
         payload=quiz,
         quiz_id=quiz_id,
         expected_count=total_questions,
     )
-
-    logger.info(
-        f"Structural validation passed — quiz_id={quiz_id}"
-    )
+    logger.info(f"Structural validation passed — quiz_id={quiz_id}")
 
     # -------------------------------------------------
-    # 3️⃣ REVIEWER — quality check
+    # 2) REVIEWER
     # -------------------------------------------------
     review = review_quiz_quality(
         quiz_payload=quiz,
@@ -82,25 +93,15 @@ def run_quiz_pipeline(
     )
 
     if review.get("status") == "PASS":
-        logger.info(
-            f"Quality review passed on first attempt — quiz_id={quiz_id}"
-        )
-        logger.info(
-            f"Stage 2.8 quiz pipeline completed — quiz_id={quiz_id}"
-        )
+        logger.info(f"Stage 2.8 quiz pipeline completed — quiz_id={quiz_id}")
         return quiz
 
-    logger.warning(
-        f"Reviewer issues — quiz_id={quiz_id}: {review.get('issues')}"
-    )
+    issues = review.get("issues", []) or []
+    logger.warning(f"Reviewer issues — quiz_id={quiz_id}: {issues}")
 
     # -------------------------------------------------
-    # 4️⃣ DETERMINISTIC FIXER
+    # 3) DETERMINISTIC FIXER
     # -------------------------------------------------
-    logger.warning(
-        f"Quality review failed — attempting deterministic fixes — quiz_id={quiz_id}"
-    )
-
     fixed_quiz, applied = apply_reviewer_fixes(
         quiz_payload=quiz,
         review_result=review,
@@ -112,104 +113,121 @@ def run_quiz_pipeline(
         expected_count=total_questions,
     )
 
-    logger.info(
-        f"Structural validation passed after fix — quiz_id={quiz_id}"
-    )
-
-    # -------------------------------------------------
-    # 5️⃣ ACCEPT IF FIXES WERE APPLIED
-    # -------------------------------------------------
     if applied > 0:
-        logger.info(
-            f"Reviewer issues resolved deterministically — accepting quiz — quiz_id={quiz_id}"
-        )
-        logger.info(
-            f"Stage 2.8 quiz pipeline completed — quiz_id={quiz_id}"
-        )
+        logger.info(f"Deterministic fixes applied — quiz_id={quiz_id}, applied={applied}")
         return fixed_quiz
 
     # -------------------------------------------------
-    # 6️⃣ EDITOR LLM FALLBACK (ONLY IF NOTHING WAS FIXED)
+    # 4) SINGLE-QUESTION EDITOR (ONE PASS ONLY)
     # -------------------------------------------------
-    logger.warning(
-        f"No deterministic fix possible — invoking editor LLM — quiz_id={quiz_id}"
-    )
+    logger.warning(f"Invoking editor (single-question) — quiz_id={quiz_id}")
 
-    edited_quiz = run_editor_llm(
-        quiz_payload=fixed_quiz,
-        review_result=review,
-    )
+    for issue in issues:
+        qid = issue.get("question_id")
+        if not qid:
+            continue
 
+        idx = next(
+            (i for i, q in enumerate(fixed_quiz["questions"]) if q.get("question_id") == qid),
+            None,
+        )
+        if idx is None:
+            raise RuntimeError(
+                f"Reviewer referenced missing question_id={qid} — quiz_id={quiz_id}"
+            )
+
+        original_q = fixed_quiz["questions"][idx]
+
+        # Editor returns a FULL question object (not a patch)
+        edited = run_editor_llm_single_question(
+            question=original_q,
+            issue=issue,
+            quiz_id=quiz_id,
+        )
+
+        if not isinstance(edited, dict):
+            raise RuntimeError(
+                f"Editor returned invalid question (non-dict) for {qid} — quiz_id={quiz_id}"
+            )
+
+        # Disallow quiz-level keys
+        illegal_keys = {"quiz", "quiz_id", "questions"}
+        bad = sorted(set(edited.keys()) & illegal_keys)
+        if bad:
+            raise RuntimeError(
+                f"Editor returned illegal keys for {qid} — quiz_id={quiz_id}, keys={bad}"
+            )
+
+        # 🔒 RE-INJECT HARD INVARIANTS (editor may NOT change these)
+        edited["question_id"] = original_q.get("question_id")
+        edited["quiz_role"] = original_q.get("quiz_role")
+        edited["question_style"] = original_q.get("question_style")
+        edited["cognitive_level"] = original_q.get("cognitive_level")
+        edited["claim_ids"] = original_q.get("claim_ids")
+
+        # Required key presence check
+        missing = REQUIRED_QUESTION_KEYS - set(edited.keys())
+        if missing:
+            raise RuntimeError(
+                f"Editor returned incomplete question for {qid} — quiz_id={quiz_id}, missing={sorted(missing)}"
+            )
+
+        # Conditional schema checks (save time before full validator)
+        qtype = edited.get("type")
+        if qtype == "mcq":
+            opts = edited.get("options")
+            if not isinstance(opts, dict) or set(opts.keys()) != {"A", "B", "C", "D"}:
+                raise RuntimeError(
+                    f"Editor returned invalid MCQ options for {qid} — quiz_id={quiz_id}"
+                )
+            ca = edited.get("correct_answer")
+            if ca not in ("A", "B", "C", "D"):
+                raise RuntimeError(
+                    f"Editor returned invalid MCQ correct_answer for {qid} — quiz_id={quiz_id}"
+                )
+
+        elif qtype == "true_false":
+            if "options" in edited and edited["options"] is not None:
+                raise RuntimeError(
+                    f"Editor returned forbidden options for true_false {qid} — quiz_id={quiz_id}"
+                )
+            ca = edited.get("correct_answer")
+            if ca not in (True, False):
+                raise RuntimeError(
+                    f"Editor returned invalid true_false correct_answer for {qid} — quiz_id={quiz_id}"
+                )
+
+        else:
+            raise RuntimeError(
+                f"Editor returned invalid question type for {qid} — quiz_id={quiz_id}, type={qtype}"
+            )
+
+        fixed_quiz["questions"][idx] = edited
+        logger.info(f"Editor applied — quiz_id={quiz_id}, question={qid}")
+
+    # -------------------------------------------------
+    # Re-validate after editor
+    # -------------------------------------------------
     validate_quiz_payload(
-        payload=edited_quiz,
+        payload=fixed_quiz,
         quiz_id=quiz_id,
         expected_count=total_questions,
     )
 
-    logger.info(
-        f"Structural validation passed after editor — quiz_id={quiz_id}"
-    )
-
     final_review = review_quiz_quality(
-        quiz_payload=edited_quiz,
+        quiz_payload=fixed_quiz,
         source_paragraphs=source_paragraphs,
     )
 
     if final_review.get("status") == "PASS":
-        logger.info(
-            f"Quality review passed after editor fallback — quiz_id={quiz_id}"
-        )
-        logger.info(
-            f"Stage 2.8 quiz pipeline completed — quiz_id={quiz_id}"
-        )
-        return edited_quiz
+        logger.info(f"Stage 2.8 quiz pipeline completed — quiz_id={quiz_id}")
+        return fixed_quiz
 
     # -------------------------------------------------
-    # 7️⃣ SECOND (FINAL) EDITOR RETRY WITH REVIEWER GUIDANCE
+    # 5) HARD STOP
     # -------------------------------------------------
-    logger.warning(
-        f"Retrying editor once with explicit reviewer guidance — quiz_id={quiz_id}"
-    )
+    logger.error(f"Quiz failed after editor — quiz_id={quiz_id}")
+    logger.warning(f"Reviewer issues — {final_review.get('issues')}")
 
-    edited_quiz_2 = run_editor_llm(
-        quiz_payload=edited_quiz,
-        review_result=final_review,
-    )
+    raise RuntimeError(f"Quiz {quiz_id} failed quality review after editor")
 
-    validate_quiz_payload(
-        payload=edited_quiz_2,
-        quiz_id=quiz_id,
-        expected_count=total_questions,
-    )
-
-    logger.info(
-        f"Structural validation passed after second editor — quiz_id={quiz_id}"
-    )
-
-    final_review_2 = review_quiz_quality(
-        quiz_payload=edited_quiz_2,
-        source_paragraphs=source_paragraphs,
-    )
-
-    if final_review_2.get("status") == "PASS":
-        logger.info(
-            f"Quality review passed after second editor fallback — quiz_id={quiz_id}"
-        )
-        logger.info(
-            f"Stage 2.8 quiz pipeline completed — quiz_id={quiz_id}"
-        )
-        return edited_quiz_2
-
-    # -------------------------------------------------
-    # 8️⃣ HARD STOP (INTENTIONAL)
-    # -------------------------------------------------
-    logger.error(
-        f"Stage 2.8 quiz failed quality review after second editor — quiz_id={quiz_id}"
-    )
-    logger.warning(
-        f"Reviewer issues — quiz_id={quiz_id}: {final_review_2.get('issues')}"
-    )
-
-    raise RuntimeError(
-        f"Quiz {quiz_id} failed quality review after editor retries"
-    )

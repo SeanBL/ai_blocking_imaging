@@ -3,67 +3,122 @@ from __future__ import annotations
 import json
 from typing import Dict, Any
 
-from .editor_prompts import EDITOR_SYSTEM_PROMPT
 from .llm_call import call_llm_json
 from .logger import logger
 
 
-def run_editor_llm(
+SINGLE_QUESTION_EDITOR_PROMPT = """You are an expert medical educator and assessment editor.
+
+You are fixing ONE quiz question that failed quality review.
+
+STRICT OUTPUT RULES (NON-NEGOTIABLE):
+- Return EXACTLY ONE question object.
+- DO NOT wrap the output in "questions", "quiz", or any container.
+- Return a FLAT JSON object only.
+- Do NOT include commentary or explanations outside JSON.
+
+EDITING RULES:
+- Modify ONLY the provided question.
+- Do NOT change question_id.
+- Do NOT change quiz_role.
+- Do NOT change claim_ids.
+- Do NOT change cognitive_level.
+- Resolve ambiguity so EXACTLY ONE correct answer remains.
+
+OUTPUT FORMAT:
+
+For MCQ:
+{
+  "type": "mcq",
+  "prompt": "...",
+  "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
+  "correct_answer": "A" | "B" | "C" | "D",
+  "rationale": "..."
+}
+
+For true/false:
+{
+  "type": "true_false",
+  "prompt": "...",
+  "correct_answer": true | false,
+  "rationale": "..."
+}
+
+Return ONLY valid JSON.
+"""
+
+
+def run_editor_llm_single_question(
     *,
-    quiz_payload: Dict[str, Any],
-    review_result: Dict[str, Any],
+    question: Dict[str, Any],
+    issue: Dict[str, Any],
+    quiz_id: int,
 ) -> Dict[str, Any]:
     """
-    Uses an LLM to fix non-deterministic quiz issues (e.g., MCQ ambiguity).
-
-    IMPORTANT:
-    - Editor is NOT allowed to change quiz_id or question ordering
-    - Editor MUST return the FULL corrected quiz
-    - Invariants are re-injected after LLM call
+    Editor rewrites ONE question and MUST return a COMPLETE flat question object.
     """
 
-    quiz_id = quiz_payload.get("quiz_id")
+    logger.warning(
+        f"Editor LLM invoked — quiz_id={quiz_id}, question={question['question_id']}"
+    )
 
-    if quiz_id is None:
-        raise ValueError("Editor invoked with missing quiz_id")
-
-    prompt_payload = {
-        "quiz": quiz_payload,
-        "review_issues": review_result.get("issues", []),
+    payload = {
+        "question": question,
+        "issue": issue,
     }
 
-    logger.warning(
-        f"Editor LLM invoked — quiz_id={quiz_id}, issues={len(prompt_payload['review_issues'])}"
-    )
-
-    prompt = (
-        EDITOR_SYSTEM_PROMPT
-        + "\n\n"
-        + json.dumps(prompt_payload, ensure_ascii=False)
-    )
-
     edited = call_llm_json(
-        prompt=prompt,
-        stage_tag="Stage 2.8 Editor",
+        prompt=SINGLE_QUESTION_EDITOR_PROMPT + "\n\n" + json.dumps(payload, ensure_ascii=False),
+        stage_tag="Stage 2.8 Editor (single-question)",
     )
 
     # -------------------------------------------------
-    # 🔒 ENFORCE PIPELINE INVARIANTS
+    # 🔒 HARD SHAPE ENFORCEMENT (NOW CONSISTENT)
     # -------------------------------------------------
-    edited["quiz_id"] = quiz_id
 
-    # Ensure questions list exists (CRITICAL)
-    if "questions" not in edited or not isinstance(edited["questions"], list):
-        logger.error("Editor LLM returned invalid schema")
-        logger.error(f"Editor raw output: {json.dumps(edited, ensure_ascii=False, indent=2)}")
-        raise ValueError("Editor output missing valid questions list")
+    if not isinstance(edited, dict):
+        raise RuntimeError("Editor returned non-dict")
 
-    # Ensure question_id order is preserved
-    for idx, q in enumerate(edited["questions"], start=1):
-        q["question_id"] = f"q{idx}"
+    if "questions" in edited:
+        raise RuntimeError(
+            f"Editor returned wrapped questions object for {question['question_id']}"
+        )
+
+    forbidden = {"quiz", "quiz_id"}
+    leaked = forbidden & set(edited.keys())
+    if leaked:
+        raise RuntimeError(
+            f"Editor returned illegal keys {sorted(leaked)} "
+            f"for question {question['question_id']}"
+        )
+
+    required = {"type", "prompt", "correct_answer", "rationale"}
+    missing = required - set(edited.keys())
+    if missing:
+        raise RuntimeError(
+            f"Editor returned incomplete question for {question['question_id']}: "
+            f"missing={sorted(missing)}"
+        )
+
+    # Conditional validation
+    if edited["type"] == "mcq":
+        opts = edited.get("options")
+        if not isinstance(opts, dict) or set(opts.keys()) != {"A", "B", "C", "D"}:
+            raise RuntimeError("Editor returned invalid MCQ options")
+        if edited["correct_answer"] not in {"A", "B", "C", "D"}:
+            raise RuntimeError("Editor returned invalid MCQ correct_answer")
+
+    elif edited["type"] == "true_false":
+        if "options" in edited:
+            raise RuntimeError("Editor illegally included options for true_false")
+        if edited["correct_answer"] not in {True, False}:
+            raise RuntimeError("Editor returned invalid true_false answer")
+
+    else:
+        raise RuntimeError(f"Unknown question type: {edited['type']}")
 
     logger.info(
-        f"Editor LLM completed — quiz_id={quiz_id}"
+        f"Editor LLM completed — quiz_id={quiz_id}, question={question['question_id']}"
     )
 
     return edited

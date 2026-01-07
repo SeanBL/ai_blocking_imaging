@@ -1,0 +1,1 @@
+pytest tests/test_stage1_invariants.py

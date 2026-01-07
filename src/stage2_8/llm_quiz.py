@@ -26,15 +26,31 @@ def validate_single_question(
     Raises ValueError on any violation.
     """
 
-    required_keys = {"type", "prompt", "correct_answer", "rationale"}
-
     if not isinstance(question, dict):
         raise ValueError("Question must be an object")
+
+    required_keys = {
+        "question_id",
+        "type",
+        "prompt",
+        "correct_answer",
+        "rationale",
+        "quiz_role",
+        "question_style",
+        "cognitive_level",
+        "claim_ids",
+    }
 
     missing = required_keys - set(question.keys())
     if missing:
         raise ValueError(
             f"[V2] Missing keys {missing} — quiz_id={quiz_id}, question={question_id}"
+        )
+
+    role = question.get("quiz_role")
+    if role not in ("inline_direct", "final_direct", "module_application"):
+        raise ValueError(
+            f"[V2] Invalid quiz_role '{role}' — quiz_id={quiz_id}, question={question_id}"
         )
 
     qtype = question.get("type")
@@ -98,28 +114,40 @@ def validate_single_question(
             )
 
 
+
 # --------------------------------------------------
 # HARD INVARIANT: SINGLE-QUESTION AUTHORING ONLY
 # --------------------------------------------------
 
-
 def generate_quiz_questions(
     *,
     quiz_id: int,
-    total_questions: int,
     source_paragraphs: List[str],
+    inline_direct_questions: int,
+    final_direct_questions: int,
+    module_application_questions: int = 1,
 ) -> Dict[str, Any]:
     """
     Gold-standard 3-pass quiz generation (V2, SAFE):
 
       Pass 1: Source claims (source-locked)
-      Pass 2: Question blueprints
+      Pass 2: Question blueprints (role-aware)
       Pass 3: Author writes ONE question per request
               (Python assembles final quiz JSON)
     """
 
+    total_questions = (
+        inline_direct_questions
+        + final_direct_questions
+        + module_application_questions
+    )
+
     logger.info(
-        f"[V2] 3-pass quiz generation starting — quiz_id={quiz_id}, total_questions={total_questions}"
+        f"[V2] 3-pass quiz generation starting — quiz_id={quiz_id}, "
+        f"inline_direct={inline_direct_questions}, "
+        f"final_direct={final_direct_questions}, "
+        f"module_application={module_application_questions}, "
+        f"total_questions={total_questions}"
     )
 
     # ----------------------------
@@ -133,9 +161,7 @@ def generate_quiz_questions(
 
     source_claims = claims_payload.get("source_claims", [])
     if not source_claims:
-        raise ValueError(
-            f"[V2] No source claims generated — quiz_id={quiz_id}"
-        )
+        raise ValueError(f"[V2] No source claims generated — quiz_id={quiz_id}")
 
     logger.info(
         f"[V2] Pass 1 complete — quiz_id={quiz_id}, claims={len(source_claims)}"
@@ -149,8 +175,10 @@ def generate_quiz_questions(
 
     blueprints_payload = generate_question_blueprints(
         quiz_id=quiz_id,
-        total_questions=total_questions,
         source_claims_payload=trimmed_claims,
+        inline_direct_questions=inline_direct_questions,
+        final_direct_questions=final_direct_questions,
+        module_application_questions=module_application_questions,
     )
 
     blueprints = blueprints_payload.get("blueprints", [])
@@ -196,10 +224,13 @@ def generate_quiz_questions(
                     stage_tag=f"Stage 2.8 Author Single (attempt {attempt})",
                 )
 
-                # Force correct question_id (LLM safety)
                 parsed_question["question_id"] = question_id
+                # ✅ Preserve blueprint metadata for downstream routing/assembly
+                parsed_question["quiz_role"] = blueprint.get("quiz_role")
+                parsed_question["question_style"] = blueprint.get("question_style")
+                parsed_question["cognitive_level"] = blueprint.get("cognitive_level")
+                parsed_question["claim_ids"] = blueprint.get("claim_ids")
 
-                # 🔐 SINGLE-QUESTION VALIDATION
                 validate_single_question(
                     question=parsed_question,
                     question_id=question_id,
@@ -220,20 +251,14 @@ def generate_quiz_questions(
                 )
 
         else:
-            # All attempts failed
             raise RuntimeError(
                 f"[V2] Author failed after {MAX_ATTEMPTS} attempts — "
                 f"quiz_id={quiz_id}, question={question_id}"
             ) from last_error
 
-        logger.info(
-            f"[V2] Author completed — quiz_id={quiz_id}, question={question_id}"
-        )
-
     # ----------------------------
-    # STEP 2 — ENFORCE ORDERING
+    # ORDERING + ASSEMBLY
     # ----------------------------
-
     questions_sorted = sorted(
         questions,
         key=lambda q: int(q["question_id"].replace("q", ""))
@@ -248,10 +273,6 @@ def generate_quiz_questions(
             f"expected={expected_ids}, actual={actual_ids}"
         )
 
-
-    # ----------------------------
-    # FINAL ASSEMBLY (DETERMINISTIC)
-    # ----------------------------
     final_quiz = {
         "quiz_id": quiz_id,
         "questions": questions_sorted,
@@ -261,12 +282,6 @@ def generate_quiz_questions(
         f"[V2] Quiz assembly complete — quiz_id={quiz_id}, questions={len(questions)}"
     )
 
-    # ----------------------------
-    # POST-ASSEMBLY VALIDATION
-    # ----------------------------
-
-    validate_quiz_post_assembly(
-        quiz_payload=final_quiz
-    )
+    validate_quiz_post_assembly(quiz_payload=final_quiz)
 
     return final_quiz

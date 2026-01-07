@@ -4,73 +4,79 @@
     {
       "question_id": "q1",
       "type": "mcq",
-      "prompt": "A community health program is onboarding a new community health worker (CHW) and wants to set up a peer mentorship. Which pairing best fits this model?",
+      "prompt": "A mentor and mentee have been using recommended mentoring practices, but a disagreement arises about expectations and communication. Which interpretation best reflects what this situation suggests about mentorship relationships?",
       "options": {
-        "A": "A CHW with several years in the same neighborhood program meets weekly with a newly hired CHW from that program to share practical guidance about doing the role in that community.",
-        "B": "Two newly hired CHWs of the same age are paired so they can motivate each other while learning the job together.",
-        "C": "The CHW’s supervisor schedules monthly check-ins focused on rating performance and determining whether the CHW should pass probation.",
-        "D": "A hospital-based pharmacist is assigned to mentor a CHW on medication counseling as part of an interprofessional education initiative."
+        "A": "Disagreements can still occur even in high-quality mentoring relationships that use effective strategies",
+        "B": "The presence of disagreement indicates the mentoring relationship has already failed",
+        "C": "Disagreements mainly occur when the mentor is ineffective or unprepared",
+        "D": "With the right strategies, disagreements should be completely preventable"
       },
       "correct_answer": "A",
-      "rationale": "Peer mentorship involves a more experienced CHW guiding a less experienced CHW, typically within the same program or community, and they are considered peers because they share similar roles and challenges."
+      "rationale": "Conflict is presented as something that can arise even when many positive mentorship strategies are in place and even in strong mentor–mentee relationships, so a disagreement does not automatically imply failure or poor mentoring."
     },
     {
       "question_id": "q2",
       "type": "mcq",
-      "prompt": "In a community health worker (CHW) mentorship program, the mentor has more field experience than the mentee. In this context, what is the best interpretation of why this is still considered a “peer” mentorship?",
+      "prompt": "A mentor and mentee have a disagreement that neither of them saw coming. What does this imply about the potential outcome if they manage the conflict effectively?",
       "options": {
-        "A": "They are peers because they work in similar roles and face similar on-the-job challenges, even if their experience differs.",
-        "B": "They are peers only if they have the same number of years working as CHWs.",
-        "C": "They are peers primarily because they are in the same age group.",
-        "D": "They are peers as long as they share the exact same job title, regardless of role expectations or challenges."
+        "A": "The relationship can recover and continue productively after the conflict is addressed well.",
+        "B": "The relationship is likely to be permanently harmed once a conflict occurs.",
+        "C": "Successful resolution depends mainly on being able to foresee conflicts in advance.",
+        "D": "The most appropriate response is to end the mentorship to prevent further damage."
       },
       "correct_answer": "A",
-      "rationale": "In this model, “peer” refers to the mentor and mentee sharing similar roles and challenges, not having equal experience levels."
+      "rationale": "The material emphasizes that while conflicts cannot always be predicted, handling them properly can lead to successful resolution and getting the mentorship relationship back on track."
     },
     {
       "question_id": "q3",
       "type": "mcq",
-      "prompt": "In a peer mentorship program for community health workers (CHWs), which set of challenges is the mentor especially well-positioned to understand because the mentor has faced similar realities in the community?",
+      "prompt": "In a mentorship, you notice a small but recurring misunderstanding that seems likely to turn into a bigger disagreement. Which response best reflects the recommended approach and its intended effect?",
       "options": {
-        "A": "Limited supplies and infrastructure, local cultural factors affecting care, and common health problems in the community",
-        "B": "Mainly completing administrative forms, scheduling meetings, and managing payroll processes",
-        "C": "Primarily explaining academic models of behavior change and research methodology with little emphasis on field conditions",
-        "D": "Focusing almost entirely on selecting and troubleshooting digital health tools and mobile applications"
+        "A": "Bring it up promptly for a conversation so it is less likely to grow into a harder-to-fix conflict",
+        "B": "Wait until the issue becomes clearly serious before discussing it so you have stronger evidence",
+        "C": "Say nothing for now to avoid creating tension, since minor issues often resolve on their own",
+        "D": "Immediately ask a supervisor to intervene so the problem is handled before either person reacts"
       },
       "correct_answer": "A",
-      "rationale": "Mentors are described as having deep understanding of the specific challenges a mentee will encounter in the community, including resource limitations, cultural issues, and health problems."
+      "rationale": "The recommended approach is to notice early signs of conflict and raise them for discussion rather than letting small problems linger, because unaddressed minor issues can expand and become more difficult to resolve."
     },
     {
       "question_id": "q4",
       "type": "mcq",
-      "prompt": "A newly hired community health worker (CHW) is struggling to navigate local cultural expectations and limited supplies during home visits. The program pairs them with a more experienced CHW from the same community. Which mentor response best fits the intended role of the mentor in this model?",
+      "prompt": "In a mentor–mentee disagreement, a mentor shifts from describing a specific behavior to making a negative judgment about the mentee as a person. What is the most likely effect of this change on the interaction?",
       "options": {
-        "A": "Share practical, experience-based tips right away and help the new CHW decide what to do in similar situations going forward",
-        "B": "Refer the new CHW to written protocols only and avoid offering personal input to prevent inconsistency",
-        "C": "Document the new CHW’s mistakes for performance review and issue corrective actions when standards are not met",
-        "D": "Observe silently during visits and wait until the end of the month to provide general feedback"
+        "A": "It is likely to trigger defensiveness and intensify the conflict rather than move toward resolution.",
+        "B": "It usually increases the mentee’s motivation to comply because the message is more forceful.",
+        "C": "It helps keep the discussion objective by focusing on the mentee’s underlying traits.",
+        "D": "It reduces escalation by making it clear who is at fault and ending debate."
       },
       "correct_answer": "A",
-      "rationale": "In this mentorship approach, the mentor is a trusted guide and advisor who can offer timely, real-world guidance drawn from their own community experience."
+      "rationale": "The material emphasizes that directing criticism at the person can make the situation worse and can provoke a negative, defensive response, so issue-focused feedback is preferred over personal judgments."
     },
     {
       "question_id": "q5",
       "type": "mcq",
-      "prompt": "A program director is deciding whether to invest time in a structured mentorship system for newly hired community health workers (CHWs). Which option best captures the expected impact of good mentorship on both the new CHW and the community?",
+      "prompt": "A mentor wants to address a missed meeting in a way that is least likely to provoke defensiveness. Which phrasing best follows the recommended approach?",
       "options": {
-        "A": "It primarily supports the new CHW’s personal confidence, with little effect on community-facing services or training",
-        "B": "It tends to delay development of practical skills because new CHWs become dependent on guidance",
-        "C": "It builds the new CHW’s confidence and ability while also strengthening community services and training through a more capable CHW workforce",
-        "D": "It decreases the community’s service capacity by shifting experienced CHWs away from clinical work to mentoring"
+        "A": "“I noticed we missed our scheduled meeting. I’m concerned because it affects our progress—can we talk about what happened and how to prevent it next time?”",
+        "B": "“You were irresponsible for missing the meeting, and this is becoming a pattern.”",
+        "C": "“If you miss again, I will report you, because this is unacceptable.”",
+        "D": "“You clearly don’t care about this mentorship, so I don’t see the point of meeting.”"
       },
-      "correct_answer": "C",
-      "rationale": "Good mentorship is described as increasing a new CHW’s confidence and competence and helping them learn skills and new material more quickly. The mentorship system is also presented as benefiting the community by resulting in more confident, skilled CHWs who provide clinical services and training programs."
+      "correct_answer": "A",
+      "rationale": "The recommended approach is to focus on the specific issue (the missed meeting) and express concern in a constructive way rather than labeling the mentee’s character, which is more likely to trigger defensiveness and escalate conflict."
     },
     {
       "question_id": "q6",
       "type": "mcq",
-      "prompt": "In the context of community health worker (CHW) mentorship, what does the term \"knowledge transfer\" mean?",
+      "prompt": "In a mentor–mentee disagreement, which response best demonstrates active listening in a way that is most likely to improve collaboration and support a shared resolution?",
       "options": {
-        "A": "Maintaining and clearly sharing useful know-how within the
+        "A": "State that you want to understand the other person’s view and invite them to explain what they feel and why",
+        "B": "Stay quiet and nod so the other person knows you agree and the discussion can end quickly",
+        "C": "Avoid asking about their perspective because it could make your position seem less firm",
+        "D": "Repeat your main point several times to ensure the other person understands your stance"
+      },
+      "correct_answer": "A",
+      "rationale": "Listening to the other side includes explicitly
 
 ===== END =====
