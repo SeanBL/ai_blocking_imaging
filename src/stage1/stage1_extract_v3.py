@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 from docx import Document
 
@@ -57,60 +57,96 @@ def canonical_col_label(raw: str) -> str:
         return "english text"
     if t.startswith("image"):
         return "image"
+    if t.startswith("button labels"):
+        return "button labels"
 
     return t
 
+def is_slide_header(text: str) -> bool:
+    """
+    Detect slide header rows.
+    Accepts:
+      - 'Header: ...'
+      - 'Header ...'
+      - 'Slide (Header) ...'
+      - 'Slide Header ...'
+    """
+    t = text.lower()
+    return (
+        t.startswith("header:")
+        or t.startswith("header ")
+        or t.startswith("slide (header)")
+        or t.startswith("slide header")
+    )
 
 def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
     doc = Document(str(docx_path))
 
-    module = {"module_title": docx_path.stem, "slides": []}
+    module: Dict[str, Any] = {"module_title": docx_path.stem, "slides": []}
     slide_index = 0
 
-    # Engage1 per-slide state (reset when new slide starts)
+    # Current slide state (persists across tables until a new slide header appears)
+    slide: Optional[Dict[str, Any]] = None
+    columns: Dict[str, List[str]] = {}
+    col_labels: List[str] = []
+
+    # Engage1 per-slide state
     engage1_mode = False
     engage1_intro_row_pending = False
     collecting_button_labels = False
-    engage1_single_image_mode = False
 
     engage_intro_parts: List[str] = []
-    engage_intro_image: str | None = None
+    engage_intro_image: Optional[str] = None
     engage_items: List[Dict[str, Any]] = []
     engage_intro_notes: List[str] = []
 
+    def reset_engage1_state() -> None:
+        nonlocal engage1_mode, engage1_intro_row_pending, collecting_button_labels
+        nonlocal engage_intro_parts, engage_intro_image, engage_items, engage_intro_notes
+        engage1_mode = False
+        engage1_intro_row_pending = False
+        collecting_button_labels = False
+        engage_intro_parts = []
+        engage_intro_image = None
+        engage_items = []
+        engage_intro_notes = []
 
-    def finalize_slide(slide, columns):
+    def finalize_slide(cur_slide: Dict[str, Any], cur_columns: Dict[str, List[str]]) -> None:
+        """
+        Convert collected column text into final slide JSON.
+        IMPORTANT: Only Slide Type signals affect slide_type. Human prose notes do not.
+        """
+        nonlocal engage_items, engage_intro_parts, engage_intro_image, engage_intro_notes
+
         notes_parts: List[str] = []
-        notes_parts.extend(columns.get("notes and instructions", []))
-        notes_parts.extend(columns.get("notes and instructions__bullets", []))
+        notes_parts.extend(cur_columns.get("notes and instructions", []))
+        notes_parts.extend(cur_columns.get("notes and instructions__bullets", []))
         notes = "\n".join(notes_parts).strip()
-        slide["notes"] = notes
+        cur_slide["notes"] = notes if notes else ""
 
         notes_lower = notes.lower()
         if "slide type = engage 1" in notes_lower:
-            slide["slide_type"] = "engage1"
+            cur_slide["slide_type"] = "engage1"
         elif "slide type = engage 2" in notes_lower:
-            slide["slide_type"] = "engage2"
+            cur_slide["slide_type"] = "engage2"
         else:
-            slide["slide_type"] = "panel"
+            cur_slide["slide_type"] = "panel"
 
-        # Only suppress slide-level image for Engage1
-        if slide["slide_type"] == "engage1":
-            slide["image"] = None
+        # Slide-level image handling
+        if cur_slide["slide_type"] == "engage1":
+            cur_slide["image"] = None
         else:
-            # Preserve normal panel images (existing Stage 1 behavior)
-            if "image" in columns and columns["image"]:
-                img = " ".join(columns["image"]).strip()
-                slide["image"] = img if img else None
+            if "image" in cur_columns and cur_columns["image"]:
+                img = " ".join(cur_columns["image"]).strip()
+                cur_slide["image"] = img if img else None
 
         # -------------------------------
-        # ENGAGE 1 output (ROW-BASED, FROM INSPECTION OUTPUT)
+        # ENGAGE 1 output
         # -------------------------------
-        if slide["slide_type"] == "engage1":
+        if cur_slide["slide_type"] == "engage1":
             # bind button labels -> items in order
             labels: List[str] = []
-            for txt in columns.get("button labels", []):
-                # your docs show one label per row, but we allow pipes too
+            for txt in cur_columns.get("button labels", []):
                 labels.extend([p.strip() for p in txt.split("|") if p.strip()])
 
             if labels:
@@ -118,7 +154,7 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
                     if i < len(labels):
                         item["button_label"] = labels[i]
 
-            slide["content"] = {
+            cur_slide["content"] = {
                 "intro": {
                     "text": "\n".join(engage_intro_parts).strip(),
                     "image": engage_intro_image,
@@ -126,80 +162,82 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
                 },
                 "items": engage_items,
             }
-            return  # DO NOT fall through
+            return
 
         # -------------------------------
-        # PANEL / other types output (existing behavior)
+        # PANEL / ENGAGE2 output
         # -------------------------------
-        blocks = []
-        for txt in columns.get("english text", []):
+        blocks: List[Dict[str, Any]] = []
+        for txt in cur_columns.get("english text", []):
             blocks.append({"type": "paragraph", "text": txt})
 
-        bullet_items = columns.get("english text__bullets", [])
+        bullet_items = cur_columns.get("english text__bullets", [])
         if bullet_items:
             blocks.append({"type": "bullets", "items": bullet_items})
 
-        slide["content"]["blocks"] = blocks
+        cur_slide["content"]["blocks"] = blocks
 
-        if slide["slide_type"] == "engage2":
-            labels = []
-            for txt in columns.get("button labels", []):
+        if cur_slide["slide_type"] == "engage2":
+            labels: List[str] = []
+            for txt in cur_columns.get("button labels", []):
                 labels.extend([p.strip() for p in txt.split("|") if p.strip()])
             if labels:
-                slide["content"]["button_labels"] = labels
+                cur_slide["content"]["button_labels"] = labels
+
+    def start_new_slide(header_text: str, tbl, header_row_idx: int) -> None:
+        """
+        Finalize previous slide (if any), then initialize a new slide.
+        """
+        nonlocal slide, columns, col_labels, slide_index
+        nonlocal engage1_mode, engage1_intro_row_pending, collecting_button_labels
+
+        if slide is not None:
+            finalize_slide(slide, columns)
+            module["slides"].append(slide)
+
+        slide_index += 1
+        slide = {
+            "id": f"slide_{slide_index:03d}",
+            "header": header_text,
+            "slide_type": "panel",
+            "image": None,
+            "notes": "",
+            "content": {"blocks": []},
+        }
+
+        reset_engage1_state()
+
+        # Next row is column label row
+        label_row = tbl.rows[header_row_idx + 1]
+        col_labels = [canonical_col_label(c.text) for c in label_row.cells]
+        columns = {label: [] for label in col_labels if label}
 
     for tbl in doc.tables:
         if len(tbl.rows) < 3:
             continue
 
         row_idx = 0
-        slide = None
-        columns: Dict[str, List[str]] = {}
-        col_labels: List[str] = []
 
         while row_idx < len(tbl.rows):
             row = tbl.rows[row_idx]
             first_cell = normalize(row.cells[0].text)
+            first_lower = first_cell.lower()
 
             # -------------------------------
             # Start of slide
             # -------------------------------
-            if (
-                first_cell.lower().startswith("slide (header)")
-                or first_cell.lower().startswith("header:")
-            ):
-                if slide:
-                    finalize_slide(slide, columns)
-                    module["slides"].append(slide)
-
-                slide_index += 1
-                slide = {
-                    "id": f"slide_{slide_index:03d}",
-                    "header": first_cell,
-                    "slide_type": "panel",
-                    "image": None,
-                    "notes": "",
-                    "content": {"blocks": []},
-                }
-
-                # reset Engage1 state for new slide
-                engage1_mode = False
-                engage1_intro_row_pending = False
-                engage1_single_image_mode = False
-                engage_intro_parts = []
-                engage_intro_image = None
-                engage_items = []
-                engage_intro_notes = []
-
-                label_row = tbl.rows[row_idx + 1]
-                col_labels = [canonical_col_label(c.text) for c in label_row.cells]
-                columns = {label: [] for label in col_labels if label}
-
+            if is_slide_header(first_lower):
+                start_new_slide(first_cell, tbl, row_idx)
                 row_idx += 2
                 continue
 
+            # If we have not seen any slide yet, ignore stray tables
+            if slide is None:
+                row_idx += 1
+                continue
+
             # -------------------------------
-            # Build row-wise texts per column (so Engage1 can be row-based)
+            # Build row-wise texts per column
             # -------------------------------
             row_texts: Dict[str, List[str]] = {}
             for idx, cell in enumerate(row.cells):
@@ -216,14 +254,12 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
             eng_texts = row_texts.get("english text", [])
             notes_texts = row_texts.get("notes and instructions", [])
 
-            # Always preserve NOTES structurally (stage-level notes output)
-            # This matches what your pipeline has already been doing.
+            # Always preserve notes at slide level
             if notes_texts:
                 columns.setdefault("notes and instructions", []).extend(notes_texts)
 
             # -------------------------------
-            # Engage1 detection: INTRO ROW is the row whose NOTES contains "Slide Type = Engage 1"
-            # (This is EXACTLY what your inspection output shows.)
+            # Engage1 detection (structural: Slide Type signal only)
             # -------------------------------
             if notes_texts:
                 blob = " ".join(t.lower() for t in notes_texts)
@@ -236,14 +272,11 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
             # ENGAGE 1 ROW-BASED PARSING
             # -------------------------------
             if engage1_mode:
-                # Button labels block starts when Image cell == "Button Labels"
+                # Button Labels section starts when Image cell says "Button Labels"
                 if img_texts and img_texts[0].strip().lower() == "button labels":
                     collecting_button_labels = True
-
-                    # IMPORTANT: the first label is on THIS SAME ROW in your docs
                     if eng_texts:
                         columns.setdefault("button labels", []).extend(eng_texts)
-
                     row_idx += 1
                     continue
 
@@ -261,57 +294,66 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
                         engage_intro_parts.extend(eng_texts)
                     if notes_texts:
                         engage_intro_notes.extend(notes_texts)
-                        # Detect the "single image fixed location" Engage1 variant
-                        blob_notes = " ".join(t.lower() for t in notes_texts)
-                        if "single image in fixed location" in blob_notes:
-                            engage1_single_image_mode = True
-                    # after this row, intro is done; following rows are items
                     engage1_intro_row_pending = False
                     row_idx += 1
                     continue
 
-                # Item rows: each row with an image is a new item
-                if img_texts:
+                # -------------------------------
+                # ENGAGE 1 ITEM ROW (STRUCTURE-PRESERVING)
+                # Preserves paragraphs + bullets in order
+                # -------------------------------
+                if eng_texts:
+                    eng_blocks: List[Dict[str, Any]] = []
+
+                    # Locate the English Text cell to re-inspect paragraph structure
+                    try:
+                        eng_col_idx = col_labels.index("english text")
+                        eng_cell = row.cells[eng_col_idx]
+                    except ValueError:
+                        eng_cell = None
+
+                    if eng_cell:
+                        paras = [p for p in eng_cell.paragraphs if normalize(p.text)]
+
+                        list_items: List[str] = []
+                        for p in paras:
+                            txt = normalize(p.text)
+                            if not txt:
+                                continue
+
+                            if is_list_paragraph(p):
+                                list_items.append(txt)
+                            else:
+                                if list_items:
+                                    eng_blocks.append({
+                                        "type": "bullets",
+                                        "items": list_items,
+                                    })
+                                    list_items = []
+                                eng_blocks.append({
+                                    "type": "paragraph",
+                                    "text": txt,
+                                })
+
+                        if list_items:
+                            eng_blocks.append({
+                                "type": "bullets",
+                                "items": list_items,
+                            })
+
                     item = {
                         "button_label": None,
-                        "image": " ".join(img_texts).strip(),
-                        "body": list(eng_texts) if eng_texts else [],
+                        "image": " ".join(img_texts).strip() if img_texts else None,
+                        "body": eng_blocks,
                         "notes": "\n".join(notes_texts).strip() if notes_texts else None,
                     }
+
                     engage_items.append(item)
                     row_idx += 1
                     continue
-
-                # ✅ NEW: "single image fixed location" variant
-                # If the slide uses one fixed image, item rows may have NO image text.
-                # In that case, each english-text row becomes an item.
-                if engage1_single_image_mode and eng_texts:
-                    item = {
-                        "button_label": None,
-                        "image": None,
-                        "body": list(eng_texts),
-                        "notes": "\n".join(notes_texts).strip() if notes_texts else None,
-                    }
-                    engage_items.append(item)
-                    row_idx += 1
-                    continue
-
-                # If a row has no image but has english text, append to last item body
-                if eng_texts and engage_items:
-                    engage_items[-1]["body"].extend(eng_texts)
-
-                # If a row has notes but no image, attach to last item notes
-                if notes_texts and engage_items and not img_texts:
-                    existing = engage_items[-1].get("notes")
-                    extra = "\n".join(notes_texts).strip()
-                    if extra:
-                        engage_items[-1]["notes"] = (existing + "\n" + extra).strip() if existing else extra
-
-                row_idx += 1
-                continue
 
             # -------------------------------
-            # DEFAULT (NON-ENGAGE1) parsing: keep your existing bullet logic intact
+            # DEFAULT (NON-ENGAGE1) parsing: preserve bullets + prose
             # -------------------------------
             for idx, cell in enumerate(row.cells):
                 if idx >= len(col_labels):
@@ -343,9 +385,10 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
 
             row_idx += 1
 
-        if slide:
-            finalize_slide(slide, columns)
-            module["slides"].append(slide)
+    # Finalize last slide once
+    if slide is not None:
+        finalize_slide(slide, columns)
+        module["slides"].append(slide)
 
     return module
 
@@ -353,51 +396,29 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
 def main() -> None:
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Stage 1 v3 extractor (fixed bullets + no loss)"
-    )
-
+    parser = argparse.ArgumentParser(description="Stage 1 v3 extractor (fixed bullets + no loss)")
     parser.add_argument("--in", dest="in_path", required=False)
     parser.add_argument("--out", dest="out_path", required=False)
-
     args = parser.parse_args()
 
-    # ----------------------------------------
-    # AUTO-DETECT INPUT DOCX IF NOT PROVIDED
-    # ----------------------------------------
     raw_dir = Path("data/raw")
 
     if not args.in_path:
         docx_files = list(raw_dir.glob("*.docx"))
-
         if len(docx_files) == 0:
             raise SystemExit("❌ No Word documents found in data/raw")
-
         if len(docx_files) > 1:
-            raise SystemExit(
-                f"❌ Multiple Word documents found in data/raw: {[f.name for f in docx_files]}"
-            )
-
+            raise SystemExit(f"❌ Multiple Word documents found in data/raw: {[f.name for f in docx_files]}")
         input_path = docx_files[0]
     else:
         input_path = Path(args.in_path)
 
-    # ----------------------------------------
-    # DETERMINE OUTPUT PATH
-    # ----------------------------------------
-    if args.out_path:
-        output_path = Path(args.out_path)
-    else:
-        output_path = Path("data/processed/module_v3.json")
+    output_path = Path(args.out_path) if args.out_path else Path("data/processed/module_v3.json")
 
-    # run extraction
     module = extract_tables_v3(input_path)
 
-    # write output
-    output_path.write_text(
-        json.dumps(module, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(module, indent=2, ensure_ascii=False), encoding="utf-8")
 
     print(f"✅ Using input: {input_path.name}")
     print(f"✅ Output written to: {output_path}")
@@ -406,3 +427,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
