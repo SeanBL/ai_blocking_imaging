@@ -7,26 +7,34 @@ from .logger import logger
 from .llm_call import call_llm_json
 from .prompts_concepts import PASS1_SYSTEM_PROMPT, build_pass1_user_prompt
 
-
 def generate_source_claims(
     *,
     quiz_id: int,
     source_paragraphs: List[str],
-    concept_count: int = 8,
+    concept_count: int | None = None,
 ) -> Dict[str, Any]:
     """
     Pass 1: Produce source-locked claims, allowable inferences,
     and common misconceptions based strictly on the source text.
     """
 
+    paragraph_count = len(source_paragraphs)
+
+    if concept_count is None:
+        if paragraph_count > 35:
+            concept_count = 6
+        else:
+            concept_count = 9
+
     logger.warning(
         f"[TEST1] Pass 1 generate_source_claims CALLED — "
-        f"quiz_id={quiz_id}, paragraphs={len(source_paragraphs)}"
+        f"quiz_id={quiz_id}, paragraphs={paragraph_count}"
     )
 
     user_prompt = build_pass1_user_prompt(
         quiz_id=quiz_id,
         source_paragraphs=source_paragraphs,
+        concept_count=concept_count,
     )
 
     prompt = PASS1_SYSTEM_PROMPT + "\n\n" + user_prompt
@@ -38,13 +46,11 @@ def generate_source_claims(
     parsed = call_llm_json(
         prompt=prompt,
         stage_tag="Stage 2.8 Pass1 (Concepts)",
-        max_tokens=2200,   # ← KEY FIX
+        max_tokens=3500,
     )
 
-    # Minimal sanity checks (strict but not overbearing)
     if "source_claims" not in parsed or not isinstance(parsed["source_claims"], list):
         raise ValueError("Pass 1 output missing required 'source_claims' list")
 
     parsed["quiz_id"] = quiz_id
     return parsed
-

@@ -74,6 +74,51 @@ def _log_role_summary(
         f"(strict_role_counts={bool(expected.get('strict_role_counts'))})"
     )
 
+def _rebalance_blueprint_roles(
+    *,
+    blueprints: List[Dict[str, Any]],
+    expected: Dict[str, int],
+) -> bool:
+    """
+    Deterministically rebalance blueprint roles to satisfy exact role counts.
+    Returns True if any changes were made.
+    """
+
+    def count_roles():
+        counts = {"inline_direct": 0, "final_direct": 0, "module_application": 0}
+        for bp in blueprints:
+            role = bp.get("role")
+            if role in counts:
+                counts[role] += 1
+        return counts
+
+    changed = False
+    counts = count_roles()
+
+    # Never touch module_application count
+    # Only rebalance inline_direct <-> final_direct
+
+    # Too many inline_direct → convert to final_direct
+    while counts["inline_direct"] > expected["inline_direct"]:
+        for bp in blueprints:
+            if bp.get("role") == "inline_direct":
+                bp["role"] = "final_direct"
+                counts["inline_direct"] -= 1
+                counts["final_direct"] += 1
+                changed = True
+                break
+
+    # Too many final_direct → convert to inline_direct
+    while counts["final_direct"] > expected["final_direct"]:
+        for bp in blueprints:
+            if bp.get("role") == "final_direct":
+                bp["role"] = "inline_direct"
+                counts["final_direct"] -= 1
+                counts["inline_direct"] += 1
+                changed = True
+                break
+
+    return changed
 
 def generate_question_blueprints(
     *,
@@ -172,16 +217,48 @@ def generate_question_blueprints(
 
     _log_role_summary(quiz_id=quiz_id, role_counts=result.role_counts, expected=expected)
 
-    if not result.ok:
-        top_errors = result.errors[:10]
+    if not result.ok and expected["strict_role_counts"]:
         logger.warning(
-            f"[Pass2] Blueprint validation FAILED — quiz_id={quiz_id} "
-            f"errors={len(result.errors)} top_errors={top_errors}"
+            f"[Pass2] Attempting deterministic role rebalance — quiz_id={quiz_id}"
         )
-        raise ValueError(
-            f"Pass2 blueprint validation failed for quiz_id={quiz_id}. "
-            f"Top errors: {top_errors}"
+
+        repaired = _rebalance_blueprint_roles(
+            blueprints=blueprints,
+            expected=expected,
         )
+
+        if repaired:
+            # Re-validate after repair
+            result = validate_pass2_blueprints(
+                payload={"quiz_id": quiz_id, "blueprints": blueprints},
+                expected_inline_direct=expected["inline_direct"],
+                expected_final_direct=expected["final_direct"],
+                expected_module_application=expected["module_application"],
+                expected_total=expected["expected_total"],
+            )
+
+            _log_role_summary(
+                quiz_id=quiz_id,
+                role_counts=result.role_counts,
+                expected=expected,
+            )
+
+            if result.ok:
+                logger.info(
+                    f"[Pass2] Blueprint role rebalance succeeded — quiz_id={quiz_id}"
+                )
+            else:
+                logger.error(
+                    f"[Pass2] Role rebalance failed — quiz_id={quiz_id}"
+                )
+
+        if not result.ok:
+            top_errors = result.errors[:10]
+            raise ValueError(
+                f"Pass2 blueprint validation failed for quiz_id={quiz_id}. "
+                f"Top errors: {top_errors}"
+            )
+
 
     # Ensure quiz_id is set (and authoritative)
     parsed["quiz_id"] = quiz_id

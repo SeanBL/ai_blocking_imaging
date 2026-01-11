@@ -1,124 +1,178 @@
 ===== RAW MODEL OUTPUT =====
 {
-  "quiz_id": 1,
+  "quiz_id": 4,
   "source_claims": [
     {
       "claim_id": "c1",
-      "claim_text": "Undernutrition in the first 1000 days of life is the most common form of childhood malnutrition in low- and middle-income countries (LMIC).",
+      "claim_text": "Well trained and competent CHW teams are described as the heart and soul of all HSCs, and their training, experience, and continuing medical education are critical preparation for their roles in an HSC setting.",
       "evidence": [
-        "“Undernutrition in the first 1000 days of life is the most common form of childhood malnutrition in low-and middle-income countries (LMIC).”"
+        "“Well trained and competent CHW teams are the heart and soul of all HSCs.”",
+        "“Their training, experience, and continuing medical education are critical in preparing them for the important roles they play in an HSC setting.”"
       ],
       "allowable_inferences": [
-        "A future question could ask learners to identify the most common form of childhood malnutrition in LMIC as described in the text."
+        "A future question could ask why CHW training and continuing education matter for HSC operations."
       ],
       "common_misconceptions": [
-        "Assuming overnutrition is the most common form of childhood malnutrition in LMIC."
+        "Assuming CHW teams can run an HSC effectively without ongoing education once initial training is completed."
       ]
     },
     {
       "claim_id": "c2",
-      "claim_text": "For children aged 5 and under, malnutrition effects include increased susceptibility to infections.",
+      "claim_text": "The text assumes CHWs involved in these clinics will have earned their Basic Training certificate and encourages CHWs to study the Advanced CHW Training (ACT) curriculum.",
       "evidence": [
-        "“Effects of malnutrition for children aged 5 and under include increased susceptibility to infections…”"
+        "“we assume that all CHWs involved in these clinics will have earned their Basic Training certificate.”",
+        "“we encourage CHWs to take the next step by studying the Advanced CHW Training (ACT) curriculum”"
       ],
       "allowable_inferences": [
-        "A future question could ask learners to list infection susceptibility as an effect of malnutrition in children aged 5 and under."
+        "A future question could ask what baseline training is assumed for CHWs staffing an HSC."
       ],
       "common_misconceptions": [
-        "Believing malnutrition affects growth only and does not influence infection risk."
+        "Believing ACT is stated as mandatory rather than encouraged."
       ]
     },
     {
       "claim_id": "c3",
-      "claim_text": "For children aged 5 and under, malnutrition effects include impaired physical and cognitive development.",
+      "claim_text": "A staffing step for an HSC is to ensure all CHWs have registered for Continuing Medical Education (CME), either with WiRED or another organization offering high quality CME programs.",
       "evidence": [
-        "“Effects of malnutrition for children aged 5 and under include… impaired physical and cognitive development…”"
+        "“First, ensure that all CHWs have registered for Continuing Medical Education (CME), either with WiRED or with another organization offering high quality CME programs.”"
       ],
       "allowable_inferences": [
-        "A future question could ask learners to identify physical and cognitive development impairment as consequences of malnutrition."
+        "A future question could ask what the first staffing/recruiting step is in the described process."
       ],
       "common_misconceptions": [
-        "Thinking malnutrition impairs physical development but not cognitive development."
+        "Thinking CME registration is optional or only needed for new CHWs."
       ]
     },
     {
       "claim_id": "c4",
-      "claim_text": "For children aged 5 and under, malnutrition effects include increased child mortality.",
+      "claim_text": "WiRED’s professional CME program for CHWs is cost-free and accessible on all mobile devices.",
       "evidence": [
-        "“Effects of malnutrition for children aged 5 and under include… increased child mortality…”"
+        "“WiRED’s professional CME program for CHWs is cost-free and accessible on all mobile devices.”"
       ],
       "allowable_inferences": [
-        "A future question could ask learners to recognize increased mortality as an effect of malnutrition in young children."
+        "A future question could ask what features (cost/access) are highlighted about WiRED’s CME program."
       ],
       "common_misconceptions": [
-        "Assuming malnutrition rarely contributes to mortality in young children."
+        "Assuming the CME program requires payment or is limited to certain devices."
       ]
     },
     {
       "claim_id": "c5",
-      "claim_text": "Malnutrition contributes to one-third of all deaths of children.",
+      "claim_text": "HealthMAP contains the CME program for use by all CHWs, and it can be accessed on a phone.",
       "evidence": [
-        "“increased child mortality contributing to one-third of all deaths of children.”"
+        "“HealthMAP… contains the CME program for use by all CHWs.”",
+        "“You can access it on your phone.”"
       ],
       "allowable_inferences": [
-        "A future question could ask learners to recall the proportion of child deaths to which malnutrition contributes as stated in the text."
+        "A future question could ask where CHWs can access the CME program mentioned in the module."
       ],
       "common_misconceptions": [
-        "Assuming malnutrition contributes to only a small fraction of child deaths."
+        "Believing HealthMAP is only for the current learner rather than for all CHWs."
       ]
     },
     {
       "claim_id": "c6",
-      "claim_text": "In 1996, WHO and UNICEF promoted the Integrated Management of Childhood Illness (IMCI) strategy from birth to 2 years.",
+      "claim_text": "Recruiting guidance is to recruit trained CHWs from the local community, and at a minimum they should have completed a Basic CHW Training Program.",
       "evidence": [
-        "“In 1996, WHO and UNICEF promoted a strategy of Integrated Management of Childhood Illness (IMCI) from birth to 2 years.”"
+        "“Recruit trained CHWs from the local community.”",
+        "“At a minimum, they should have completed a Basic CHW Training Program.”"
       ],
       "allowable_inferences": [
-        "A future question could ask learners to identify the organizations and year associated with promoting IMCI in the text."
+        "A future question could ask what minimum training is specified for recruited CHWs."
       ],
       "common_misconceptions": [
-        "Confusing which organizations promoted IMCI."
+        "Assuming CHWs do not need any formal training if they are from the local community."
       ]
     },
     {
       "claim_id": "c7",
-      "claim_text": "IMCI recommends assessing child nutrition status by weight for age.",
+      "claim_text": "CHWs should be thoroughly trained in measurement techniques, basic screening questionnaires, infection control, patient communication, referral protocols, basic pharmacy dispensing, recordkeeping, and confidentiality.",
       "evidence": [
-        "“The strategy recommends that child nutrition status be assessed by weight for age…”"
+        "“CHWs should be thoroughly trained in the following:” (followed by the listed training areas)"
       ],
       "allowable_inferences": [
-        "A future question could ask learners what measurement IMCI uses to assess nutrition status according to the text."
+        "A future question could ask learners to identify which competencies are included in CHW training for HSC work."
       ],
       "common_misconceptions": [
-        "Assuming IMCI assessment is based on height-for-age rather than weight-for-age."
+        "Assuming measurement skills alone are sufficient and that communication, referral protocols, and confidentiality are not part of CHW preparation."
       ]
     },
     {
       "claim_id": "c8",
-      "claim_text": "IMCI recommends providing counselling on nutrition and follow-up services to encourage parents to access regular health care.",
+      "claim_text": "CHWs should also be trained on standardization and quality control, such as regular calibration checks on devices, and administrators should periodically verify correct instrument reading and accurate measurements.",
       "evidence": [
-        "“and that counselling on nutrition and follow‐up services be provided to encourage the parents to access regular health care.”"
+        "“CHWs should also be trained on standardization and quality control–e.g., regular calibration checks on devices.”",
+        "“Administrators should periodically verify that CHWs are correctly reading the instruments and obtaining accurate measurements.”"
       ],
       "allowable_inferences": [
-        "A future question could ask learners to identify counselling and follow-up services as recommended components of IMCI related to nutrition."
+        "A future question could ask what quality assurance activities are recommended for measurement stations."
       ],
       "common_misconceptions": [
-        "Thinking IMCI focuses only on measurement and does not include counselling or follow-up."
+        "Assuming device calibration and measurement verification are one-time tasks rather than ongoing checks."
       ]
     },
     {
       "claim_id": "c9",
-      "claim_text": "WHO Growth Standard Charts are recommended for use with children from birth to 2 years.",
+      "claim_text": "The clinician should be made aware of available medicines, referral protocols, and all procedures within the HSC, and should be entirely familiar with clinical algorithms that guide decisions about patient care, diagnoses, and treatment and can vary by local medical communities and health ministries.",
       "evidence": [
-        "“The WHO Growth Standard Charts are recommended for use with children from birth to 2 years.”"
+        "“The clinician… should be made aware of available medicines, referral protocols, and all procedures within the HSC.”",
+        "“They should be entirely familiar with clinical algorithms… They can vary by local medical communities and health ministries.”"
       ],
       "allowable_inferences": [
-        "A future question could ask learners the age range for which WHO Growth Standard Charts are recommended in the text."
+        "A future question could ask what the clinician needs to know before participating in an HSC."
       ],
       "common_misconceptions": [
-        "Assuming the charts are recommended for all children regardless of age."
+        "Assuming clinical algorithms are universal and do not vary by locality."
       ]
     },
-
+    {
+      "claim_id": "c10",
+      "claim_text": "In most cases, a senior CHW should manage the HSC, allowing the clinician to address higher-level needs of patients referred by CHWs staffing the clinic.",
+      "evidence": [
+        "“In most cases, a senior CHW should manage the HSC, allowing the clinician to address higher-level needs of patients referred by CHWs staffing the clinic.”"
+      ],
+      "allowable_inferences": [
+        "A future question could ask about role division between a senior CHW manager and the clinician in an HSC."
+      ],
+      "common_misconceptions": [
+        "Assuming the clinician should manage the entire HSC workflow rather than focusing on higher-level patient needs."
+      ]
+    },
+    {
+      "claim_id": "c11",
+      "claim_text": "Before the first actual community event, staff should run a “mock clinic day” to test workflow, timing, data capture, and patient flow; the HSC manager can monitor stations for problems and improvements, have staff switch stations, and identify bottlenecks to adjust staffing, layout, timing, and waiting areas/queues.",
+      "evidence": [
+        "“before the first actual community event, run a ‘mock clinic day’… to test workflow, timing, data capture, and patient flow.”",
+        "“The HSC manager should identify bottlenecks or crowding… adjust staffing, layout, timing, and operation of the waiting areas and queues”"
+      ],
+      "allowable_inferences": [
+        "A future question could ask what operational elements a mock clinic day is intended to evaluate."
+      ],
+      "common_misconceptions": [
+        "Believing a mock clinic day is unnecessary if staff are already trained."
+      ]
+    },
+    {
+      "claim_id": "c12",
+      "claim_text": "Promoting an HSC is described as a critical portion of planning; planners should assemble key facts (when and where), describe what the HSC is and offers (including that it is free), prepare posters/flyers and a fact sheet for radio/churches/schools/local meetings, involve trusted community influencers, and specify what participants should bring.",
+      "evidence": [
+        "“telling people in the community about the upcoming HSC and generating interest… is a critical portion of the planning process.”",
+        "“Prepare announcement materials… posters and flyers… prepare a fact sheet… Involving trusted community influencers… clearly specify what participants should bring”"
+      ],
+      "allowable_inferences": [
+        "A future question could ask which details should be included in community announcements for an HSC."
+      ],
+      "common_misconceptions": [
+        "Assuming promotion only requires posting the date and location without explaining what the HSC is or what participants should bring."
+      ]
+    }
+  ],
+  "high_value_learning_points": [
+    "CHW competence and ongoing CME are positioned as central to successful HSC operations.",
+    "Staffing expectations include at least Basic CHW Training, with encouragement to pursue Advanced CHW Training (ACT).",
+    "Quality assurance for measurements includes standardization, device calibration checks, and periodic administrative verification of accurate readings.",
+    "Clear role delineation is emphasized: senior CHW management of the HSC with clinicians focusing on higher-level referred patient needs and using local clinical algorithms.",
+    "Operational readiness can be improved through a mock clinic day to test workflow, timing, data capture, patient flow, and to identify bottlenecks for process adjustments.",
+    "Community turnout depends on proactive promotion: clear logistics, explanation of services and that the HSC is free, use of multiple communication channels and trusted influencers,
 
 ===== END =====

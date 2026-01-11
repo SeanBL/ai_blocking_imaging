@@ -13,77 +13,69 @@ def extract_quiz_source(
     """
     Extract instructional text for a quiz.
 
-    ✅ INCLUDED (window is INCLUSIVE):
-      - Start marker slide (index = start_index)
-      - All slides between
-      - QUESTIONS marker slide (index = insert_index)
-
-    ✅ INCLUDED content types:
-      - Panel slide paragraph text
-      - Engage slide intro + item content
-
-    ❌ EXCLUDED:
-      - Button labels
-      - Images
-      - Notes/markers (we never read notes here anyway)
+    CONTRACT:
+    - EVERYTHING inside slide.content is included
+    - Panels + all Engage content
     """
 
-    source_paragraphs: List[str] = []
+    source_texts: List[str] = []
     included_slide_ids: List[str] = []
 
-    # INCLUSIVE window
     for idx in range(quiz_state.start_index, quiz_state.insert_index + 1):
         slide = slides[idx]
-        slide_id = slide.get("id", f"(index:{idx})")
+
+        # ✅ CANONICAL STAGE 2.5 KEYS
+        slide_id = slide.get("uuid", f"(index:{idx})")
+        slide_type = slide.get("type")
+
         included_slide_ids.append(slide_id)
 
-        slide_type = slide.get("slide_type")
-
         # -----------------------------
-        # PANEL slides
+        # PANEL
         # -----------------------------
         if slide_type == "panel":
-            blocks = slide.get("content", {}).get("blocks", [])
-            for block in blocks:
+            for block in slide.get("content", {}).get("blocks", []):
                 if block.get("type") == "paragraph":
                     text = block.get("text", "").strip()
                     if text:
-                        source_paragraphs.append(text)
+                        source_texts.append(text)
+
+                elif block.get("type") == "bullets":
+                    for item in block.get("items", []):
+                        if isinstance(item, str) and item.strip():
+                            source_texts.append(item.strip())
 
         # -----------------------------
-        # ENGAGE slides
+        # ENGAGE (ALL)
         # -----------------------------
         elif slide_type in ("engage", "engage1", "engage2"):
-            # Intro content
-            intro = slide.get("intro", {})
-            intro_content = intro.get("content", [])
-            if isinstance(intro_content, list):
-                for text in intro_content:
-                    if isinstance(text, str) and text.strip():
-                        source_paragraphs.append(text.strip())
+            intro = slide.get("intro")
+            if intro and intro.get("text"):
+                source_texts.append(intro["text"].strip())
 
-            # Item content
             for item in slide.get("items", []):
-                item_content = item.get("content", [])
-                if isinstance(item_content, list):
-                    for text in item_content:
-                        if isinstance(text, str) and text.strip():
-                            source_paragraphs.append(text.strip())
+                for body_block in item.get("body", []):
+                    if body_block.get("type") == "paragraph":
+                        text = body_block.get("text", "").strip()
+                        if text:
+                            source_texts.append(text)
 
-        # other slide types intentionally ignored
+                    elif body_block.get("type") == "bullets":
+                        for bullet in body_block.get("items", []):
+                            if isinstance(bullet, str) and bullet.strip():
+                                source_texts.append(bullet.strip())
 
-    # Debug visibility (you explicitly requested this)
     logger.info(
         f"Stage 2.8 QUIZ:{quiz_state.quiz_id} source window slides: {included_slide_ids}"
     )
     logger.info(
-        f"Stage 2.8 QUIZ:{quiz_state.quiz_id} extracted paragraphs: {len(source_paragraphs)}"
+        f"Stage 2.8 QUIZ:{quiz_state.quiz_id} extracted text blocks: {len(source_texts)}"
     )
 
-    if not source_paragraphs:
+    if not source_texts:
         raise ValueError(
             f"QUIZ:{quiz_state.quiz_id} has no instructional content in the inclusive window"
         )
 
-    return source_paragraphs
+    return source_texts
 

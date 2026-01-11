@@ -6,86 +6,6 @@ import ast
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-def unpack_stage1_content(content: Any) -> Dict[str, Any]:
-    """
-    Unpacks Stage 1 v3 content.
-
-    Supports BOTH:
-      - content as dict: { "blocks": [...] }
-      - content as list of serialized strings (legacy)
-
-    NEVER drops text.
-    """
-    paragraphs: List[str] = []
-    button_labels: List[str] | None = None
-
-    # ----------------------------------
-    # Case 1: content is already a dict
-    # ----------------------------------
-    if isinstance(content, dict):
-        blocks = content.get("blocks", [])
-        for block in blocks:
-            if block.get("type") == "paragraph":
-                text = normalize_ws(block.get("text"))
-                if text:
-                    paragraphs.append(text)
-
-        if "button_labels" in content and isinstance(content["button_labels"], list):
-            button_labels = [
-                normalize_ws(lbl)
-                for lbl in content["button_labels"]
-                if normalize_ws(lbl)
-            ]
-
-        return {
-            "paragraphs": paragraphs,
-            "button_labels": button_labels,
-        }
-
-    # ----------------------------------
-    # Case 2: content is a list (legacy)
-    # ----------------------------------
-    if isinstance(content, list):
-        for item in content:
-            if isinstance(item, dict):
-                blocks = item.get("blocks", [])
-                for block in blocks:
-                    if block.get("type") == "paragraph":
-                        text = normalize_ws(block.get("text"))
-                        if text:
-                            paragraphs.append(text)
-
-                if "button_labels" in item and isinstance(item["button_labels"], list):
-                    button_labels = [
-                        normalize_ws(lbl)
-                        for lbl in item["button_labels"]
-                        if normalize_ws(lbl)
-                    ]
-                continue
-
-            if isinstance(item, str):
-                stripped = item.strip()
-                if stripped:
-                    paragraphs.append(normalize_ws(stripped))
-
-        return {
-            "paragraphs": paragraphs,
-            "button_labels": button_labels,
-        }
-
-    # ----------------------------------
-    # Fallback: preserve anything else
-    # ----------------------------------
-    text = normalize_ws(content)
-    if text:
-        paragraphs.append(text)
-
-    return {
-        "paragraphs": paragraphs,
-        "button_labels": button_labels,
-    }
-
-
 # -----------------------------
 # Whitespace + text normalization
 # -----------------------------
@@ -103,19 +23,6 @@ def normalize_ws(s: Any) -> str:
     s = s.replace("\u00A0", " ")
     s = " ".join(s.split())
     return s.strip()
-
-def parse_stage2_signals(notes: Optional[str]) -> Dict[str, bool]:
-    """
-    Parses instructional signals from Stage 1 notes.
-    Stage 2 ONLY reads these; Stage 1 already preserved them verbatim.
-    """
-    notes = (notes or "").lower()
-
-    return {
-        "locked": "[[locked]]" in notes,
-        "create_engage1": "[[create:engage1]]" in notes,
-        "create_engage2": "[[create:engage2]]" in notes,
-    }
 
 def normalize_paragraph_list(x: Any) -> List[str]:
     """
@@ -216,106 +123,23 @@ def normalize_engage_intro(slide: Dict[str, Any]) -> Dict[str, Any]:
     # If still empty, allow missing intro entirely (empty)
     return {"title": title, "content": content}
 
-
-def normalize_engage_items(slide: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """
-    Canonical shape for Engage 1 items:
-      items: [
-        { button_label: str, title: str, content: List[str] }
-      ]
-    Accepts many possible keys from Stage 1.
-    """
-    # Find items array under common names
-    _, raw_items = first_present(slide, ["items", "points", "engage_items", "engagePoints", "engage_points"])
-
-    if raw_items is None:
-        raw_items = []
-
-    # Sometimes Stage 1 could output a single dict/string
-    if isinstance(raw_items, dict):
-        raw_items = [raw_items]
-    if isinstance(raw_items, str):
-        raw_items = [{"content": raw_items}]
-    if not isinstance(raw_items, list):
-        raw_items = []
-
-    out: List[Dict[str, Any]] = []
-    for idx, item in enumerate(raw_items, start=1):
-        if isinstance(item, str):
-            # content-only item
-            out.append(
-                {
-                    "button_label": default_engage_item_label(idx),
-                    "title": "",
-                    "content": normalize_paragraph_list(item),
-                    "image": None,
-
-                }
-            )
-            continue
-
-        if not isinstance(item, dict):
-            # unknown type -> coerce
-            out.append(
-                {
-                    "button_label": default_engage_item_label(idx),
-                    "title": "",
-                    "content": normalize_paragraph_list(item),
-                    "image": None,
-
-                }
-            )
-            continue
-
-        # Button label
-        _, raw_btn = first_present(item, ["button_label", "button", "label", "btn", "buttonLabel"])
-        btn = normalize_ws(raw_btn) or default_engage_item_label(idx)
-
-        # Title/content
-        normalized_block = normalize_text_block(
-            item,
-            title_keys=["title", "header", "heading", "name"],
-            content_keys=["content", "text", "paragraphs", "body"],
-        )
-
-        out.append(
-            {
-                "button_label": btn,
-                "title": normalized_block["title"],
-                "content": normalized_block["content"],
-                "image": None,
-            }
-        )
-
-    return out
-
-
 def normalize_engage1(slide: Dict[str, Any], index: int) -> Dict[str, Any]:
     """
-    Normalizes an Engage 1 slide into canonical shape.
-    Preserves non-core keys where possible, but guarantees:
-      uuid, type, header, notes, intro, items
+    Normalize Engage 1 slide.
+    Assumes Stage 1 already provided intro + items structure.
     """
+
     ensure_uuid(slide, index)
 
-    slide_out: Dict[str, Any] = dict(slide)  # shallow copy
-    slide_out["type"] = "engage"
-    slide_out["image"] = slide.get("image")
-
-    slide_out["header"] = normalize_ws(slide.get("header"))
-    slide_out["notes"] = normalize_ws(slide.get("notes")) or None
-
-    # canonical intro + items
-    slide_out["intro"] = normalize_engage_intro(slide)
-    slide_out["items"] = normalize_engage_items(slide)
-
-    # Remove legacy aliases if present (optional cleanliness)
-    for k in ["points", "engage_items", "engagePoints", "engage_points"]:
-        if k in slide_out:
-            slide_out.pop(k, None)
-
-    return slide_out
-
+    return {
+        "uuid": slide["uuid"],
+        "type": "engage",
+        "header": normalize_ws(slide.get("header")),
+        "notes": normalize_ws(slide.get("notes")) or None,
+        "image": slide.get("image"),
+        "intro": slide.get("content", {}).get("intro", {}),
+        "items": slide.get("content", {}).get("items", []),
+    }
 
 def normalize_engage2_build(slide: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
@@ -358,316 +182,59 @@ def normalize_engage2_build(slide: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 def normalize_engage2(slide: Dict[str, Any], index: int) -> Dict[str, Any]:
     """
-    Normalizes an Engage 2 slide into canonical shape.
-    Guarantees:
-      uuid, type, header, notes, button_label, build
-    """
-    ensure_uuid(slide, index)
-
-    slide_out: Dict[str, Any] = dict(slide)
-    slide_out["type"] = "engage2"
-    slide_out["image"] = slide.get("image")
-
-    slide_out["header"] = normalize_ws(slide.get("header"))
-    slide_out["notes"] = normalize_ws(slide.get("notes")) or None
-
-    # button label: single progressive button
-    _, raw_btn = first_present(slide, ["button_label", "button", "label", "buttonLabel"])
-    btn = normalize_ws(raw_btn) or default_engage2_button_label()
-    slide_out["button_label"] = btn
-
-    slide_out["build"] = normalize_engage2_build(slide)
-
-    # Remove likely legacy keys (optional)
-    for k in ["items", "steps", "sequence", "engage2_items", "engage2Items"]:
-        if k in slide_out and k != "build":
-            slide_out.pop(k, None)
-
-    return slide_out
-
-def normalize_engage2_structure(slide: Dict[str, Any], index: int) -> Dict[str, Any]:
-    """
-    Normalize Engage 2 structure while preserving existing builds when present.
-
-    Guarantees:
-      type = engage2
-      intro: { title, content[] }
-      steps: [ { content[] } ]
-      button: { label }
+    Normalize Engage 2 slide.
+    Assumes Stage 1 already structured build/steps.
     """
 
     ensure_uuid(slide, index)
 
-    # ----------------------------------
-    # Case 1: Already structured Engage 2 → PRESERVE
-    # ----------------------------------
-    if isinstance(slide.get("steps"), list):
-        slide_out = dict(slide)
-        slide_out["type"] = "engage2"
-
-        slide_out["intro"] = slide.get("intro", {"title": "", "content": []})
-        slide_out["button"] = slide.get("button", {"label": ""})
-
-        return slide_out
-
-    # ----------------------------------
-    # Case 2: Extract paragraphs from structured blocks
-    # ----------------------------------
-    paragraphs: List[str] = []
-
-    raw_content = slide.get("content")
-
-    if isinstance(raw_content, dict):
-        for block in raw_content.get("blocks", []):
-            if block.get("type") == "paragraph":
-                text = normalize_ws(block.get("text"))
-                if text:
-                    paragraphs.append(text)
-
-    elif isinstance(raw_content, list):
-        paragraphs = normalize_paragraph_list(raw_content)
-
-    # ----------------------------------
-    # Build Engage 2 structure
-    # ----------------------------------
-    intro_content: List[str] = []
-    steps: List[Dict[str, Any]] = []
-
-    if paragraphs:
-        intro_content = [paragraphs[0]]
-
-        for p in paragraphs[1:]:
-            steps.append({"content": [p]})
-
-    slide_out = dict(slide)
-    slide_out["type"] = "engage2"
-
-    slide_out["intro"] = {
-        "title": "",
-        "content": intro_content,
+    return {
+        "uuid": slide["uuid"],
+        "type": "engage2",
+        "header": normalize_ws(slide.get("header")),
+        "notes": normalize_ws(slide.get("notes")) or None,
+        "image": slide.get("image"),
+        "button_label": slide.get("button_label") or "Next",
+        "build": slide.get("build") or [],
     }
 
-    slide_out["button"] = {
-        "label": ""
-    }
-
-    slide_out["steps"] = steps
-
-    # Remove flat content to prevent ambiguity
-    slide_out.pop("content", None)
-
-    return slide_out
-
-def apply_engage2_button_label(
-    slide: Dict[str, Any],
-    original_slide: Dict[str, Any]
-) -> Dict[str, Any]:
-    """
-    STEP 5B: Apply single button label to Engage 2 slide.
-    """
-    label = None
-
-    content = original_slide.get("content")
-    if isinstance(content, dict):
-        labels = content.get("button_labels")
-        if isinstance(labels, list) and labels:
-            label = normalize_ws(labels[0])
-
-    if not label:
-        label = "Next"
-
-    slide["button"]["label"] = label
-    return slide
 
 def normalize_panel(slide: Dict[str, Any], index: int) -> Dict[str, Any]:
-    """
-    Panels: preserve meaning, but MATERIALIZE Stage 1 serialized content blocks
-    into real paragraph text.
-    """
     ensure_uuid(slide, index)
 
-    slide_out: Dict[str, Any] = dict(slide)
-
-    # Force canonical type
-    slide_out["type"] = "panel"
-
-    slide_out["header"] = normalize_ws(slide.get("header"))
-    slide_out["notes"] = normalize_ws(slide.get("notes")) or None
-    slide_out["image"] = slide.get("image")
-
-    raw_content = slide.get("content")
-
-    # ----------------------------------
-    # PRESERVE STRUCTURED CONTENT
-    # ----------------------------------
-    if isinstance(raw_content, dict) and "blocks" in raw_content:
-        # Stage 1 v3 structured content — KEEP AS-IS
-        slide_out["content"] = raw_content
-
-    elif raw_content is not None:
-        # Legacy fallback (old modules)
-        unpacked = unpack_stage1_content(raw_content)
-        slide_out["content"] = {
-            "blocks": [
-                {"type": "paragraph", "text": p}
-                for p in unpacked["paragraphs"]
-            ]
-        }
-    else:
-        slide_out["content"] = {"blocks": []}
-
-
-    return slide_out
-
-def normalize_engage_flat(slide: Dict[str, Any], index: int, engage_type: str) -> Dict[str, Any]:
-    """
-    STEP 3B: Engage unpacking ONLY.
-    Same behavior as panel unpacking, but explicitly for engage slides.
-    NO normalization yet.
-    """
-    slide_out = normalize_panel(slide, index)
-    slide_out["type"] = engage_type
-    return slide_out
-
-def normalize_engage1_structure(slide: Dict[str, Any], index: int) -> Dict[str, Any]:
-    """
-    STEP 4A: Normalize Engage 1 structure (intro + items).
-    Works with BOTH:
-      - flat list[str] content (legacy)
-      - structured dict content: {"blocks":[{"type":"paragraph","text":...}, ...]}
-    No button labels yet.
-    """
-    ensure_uuid(slide, index)
-
-    raw_content = slide.get("content")
-
-    # Extract paragraph strings deterministically
-    paragraphs: List[str] = []
-
-    # Case A: structured content from normalize_panel/normalize_engage_flat
-    if isinstance(raw_content, dict) and isinstance(raw_content.get("blocks"), list):
-        for b in raw_content["blocks"]:
-            if isinstance(b, dict) and b.get("type") == "paragraph":
-                t = normalize_ws(b.get("text"))
-                if t:
-                    paragraphs.append(t)
-
-    # Case B: legacy flat list[str]
-    elif isinstance(raw_content, list):
-        for p in raw_content:
-            t = normalize_ws(p)
-            if t:
-                paragraphs.append(t)
-
-    # Case C: string fallback
-    elif isinstance(raw_content, str):
-        t = normalize_ws(raw_content)
-        if t:
-            paragraphs.append(t)
-
-    intro_content: List[str] = []
-    items: List[Dict[str, Any]] = []
-
-    if paragraphs:
-        intro_content = [paragraphs[0]]
-        for paragraph in paragraphs[1:]:
-            items.append(
-                {
-                    "title": "",
-                    "content": [paragraph],
-                    "image": None,
-                }
-            )
-
-    slide_out = dict(slide)
-    slide_out["type"] = "engage"
-
-    slide_out["intro"] = {
-        "title": "",
-        "content": intro_content,
+    return {
+        "uuid": slide["uuid"],
+        "type": "panel",
+        "header": normalize_ws(slide.get("header")),
+        "notes": normalize_ws(slide.get("notes")) or None,
+        "image": slide.get("image"),
+        "content": slide.get("content", {"blocks": []}),
     }
-
-    slide_out["items"] = items
-
-    # Remove original content container (we've re-homed it into intro/items)
-    slide_out.pop("content", None)
-
-    return slide_out
-
-
-def apply_engage1_button_labels(
-    slide: Dict[str, Any],
-    original_slide: Dict[str, Any]
-) -> Dict[str, Any]:
-    """
-    STEP 4B: Apply button labels to Engage 1 items.
-    Uses Stage 1 button_labels when present.
-    """
-    items = slide.get("items", [])
-    labels = None
-
-    # Pull button labels from original Stage 1 slide if present
-    content = original_slide.get("content")
-    if isinstance(content, dict):
-        labels = content.get("button_labels")
-
-    if not isinstance(labels, list):
-        labels = []
-
-    for i, item in enumerate(items):
-        if i < len(labels) and normalize_ws(labels[i]):
-            item["button_label"] = normalize_ws(labels[i])
-        else:
-            item["button_label"] = f"Item {i + 1}"
-
-    return slide
 
 def transform_slide(slide: Dict[str, Any], index: int) -> Dict[str, Any]:
     """
-    STEP 3B: Routing + flat unpacking + signal-aware control.
+    Stage 2 routing.
+    - NO pedagogy inference
+    - NO engage creation
+    - Slide type is authoritative from Stage 1
     """
 
-    notes = slide.get("notes")
-    signals = parse_stage2_signals(notes)
-
-    # --------------------------------------------------
-    # HARD STOP: LOCKED means absolutely no transformation
-    # --------------------------------------------------
-    if signals["locked"]:
-        ensure_uuid(slide, index)
-        slide_out = dict(slide)
-        slide_out["type"] = normalize_ws(slide.get("slide_type")) or "panel"
-        return slide_out
+    ensure_uuid(slide, index)
 
     slide_type = normalize_ws(slide.get("slide_type")).lower()
 
-    # --------------------------------------------------
-    # PANEL routing
-    # --------------------------------------------------
     if slide_type == "panel":
-        # Explicit instruction to CREATE an Engage 1
-        if signals["create_engage1"]:
-            flat = normalize_engage_flat(slide, index, "engage")
-            structured = normalize_engage1_structure(flat, index)
-            return apply_engage1_button_labels(structured, slide)
-
-        # Default panel behavior
         return normalize_panel(slide, index)
 
     if slide_type == "engage1":
-        flat = normalize_engage_flat(slide, index, "engage")
-        structured = normalize_engage1_structure(flat, index)
-        return apply_engage1_button_labels(structured, slide)
-
+        return normalize_engage1(slide, index)
 
     if slide_type == "engage2":
-        flat = normalize_engage_flat(slide, index, "engage2")
-        structured = normalize_engage2_structure(flat, index)
-        return apply_engage2_button_label(structured, slide)
+        return normalize_engage2(slide, index)
 
-
-    # Safety fallback
+    # Safety fallback (should never happen)
     return normalize_panel(slide, index)
+
 
 
 

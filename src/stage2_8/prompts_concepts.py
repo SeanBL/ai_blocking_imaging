@@ -51,11 +51,6 @@ SCHEMA:
   "high_value_learning_points": [<string>]
 }
 
-QUALITY TARGETS
-- Prefer 6–12 claims if the text supports it; fewer if the text is short.
-- Each claim should be atomic (one idea).
-- high_value_learning_points should emphasize what matters clinically/educationally.
-
 STOP RULE (CRITICAL)
 - You MUST finish the JSON object.
 - You MUST close all arrays and objects.
@@ -67,18 +62,30 @@ def build_pass1_user_prompt(
     *,
     quiz_id: int,
     source_paragraphs: List[str],
+    concept_count: int,
 ) -> str:
-    joined_source = "\n\n".join(f"- {p.strip()}" for p in source_paragraphs if p and p.strip())
+    joined_source = "\n\n".join(
+        f"- {p.strip()}" for p in source_paragraphs if p and p.strip()
+    )
 
     return f"""Quiz ID: {quiz_id}
 
 Extract source-supported claims from the SOURCE TEXT below.
 
-Important:
-- Claims must be explicitly supported by the source.
-- Do NOT write questions.
-- Return ONLY JSON matching the schema.
+STRICT REQUIREMENTS (MANDATORY):
+- Generate EXACTLY {concept_count} source_claims.
+- Do NOT generate more or fewer.
+- If the text does not support {concept_count}, generate FEWER claims.
+- Each claim must be atomic (one idea).
+- Each claim MUST cite evidence from the source.
+- Evidence must be short (max 2 items per claim).
+
+DO NOT:
+- Do NOT write quiz questions.
+- Do NOT invent information.
+- Do NOT exceed the requested number of claims.
 
 SOURCE TEXT:
 {joined_source}
 """
+

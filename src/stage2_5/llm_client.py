@@ -22,4 +22,12 @@ class LLMClient:
         try:
             return json.loads(raw)
         except Exception:
-            return {"rejected": True, "reason": "LLM returned non-JSON output"}
+            return {
+                "rejected": True,
+                "reason": "LLM returned non-JSON output",
+                "safety": {
+                    "adds_new_information": False,
+                    "removes_information": False,
+                    "medical_facts_changed": False,
+                },
+            }
