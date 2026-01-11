@@ -80,7 +80,6 @@ def _apply_fix_patch_to_question(question: Dict[str, Any], patch: Dict[str, Any]
 
                 return applied
 
-            # Invalid MCQ correct_answer → ignore
             return False
 
     # -------------------------------------------------
@@ -117,6 +116,15 @@ def _apply_fix_patch_to_question(question: Dict[str, Any], patch: Dict[str, Any]
             if opt in ("A", "B", "C", "D"):
                 question["options"][opt] = value.strip()
                 applied = True
+
+    # -------------------------------------------------
+    # TRUE / FALSE SCHEMA SAFETY (REQUIRED)
+    # -------------------------------------------------
+    if question.get("type") == "true_false":
+        # true_false questions MUST NOT have options
+        if "options" in question:
+            question.pop("options", None)
+            applied = True
 
     return applied
 

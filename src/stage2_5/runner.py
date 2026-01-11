@@ -147,11 +147,12 @@ def _split_text_strict_30_70(llm: LLMClient, header: str, text: str) -> list[dic
         })
     return out
 
+def _as_paragraph_blocks(text: str) -> list[dict]:
+    text = (text or "").strip()
+    return [{"type": "paragraph", "text": text}] if text else []
+
 def run_stage2_5(module_stage2: Dict[str, Any], llm: LLMClient) -> Dict[str, Any]:
-    suggestions = {
-        "module_id": module_stage2.get("module_title"),
-        "slides": {}
-    }
+    suggestions = {"module_id": module_stage2.get("module_title"), "slides": {}}
 
     for slide in module_stage2.get("slides", []):
         slide_id = slide.get("id")
@@ -159,8 +160,9 @@ def run_stage2_5(module_stage2: Dict[str, Any], llm: LLMClient) -> Dict[str, Any
 
         slide_suggestions: Dict[str, Any] = {}
 
-        # 🔒 LOCK: Stage 2.5 must NEVER touch Engage slides
-        if slide_type in ("engage", "engage1", "engage2"):
+        # ✅ HARD LOCK: locked means absolutely no action / no LLM
+        notes_lower = (slide.get("notes") or "").lower()
+        if "[[locked]]" in notes_lower:
             slide_suggestions["meta"] = {
                 "id": slide_id,
                 "header": slide.get("header"),
@@ -168,16 +170,30 @@ def run_stage2_5(module_stage2: Dict[str, Any], llm: LLMClient) -> Dict[str, Any
             }
             slide_suggestions["final"] = {
                 "action": "keep",
-                "reason": "Engage slides are immutable in Stage 2.5",
+                "reason": "[[LOCKED]]",
+            }
+            suggestions["slides"][slide_id] = slide_suggestions
+            continue
+
+        # ✅ Stage 2.5 is PANEL-ONLY (decisions-only)
+        if slide_type not in ("panel",):
+            slide_suggestions["meta"] = {
+                "id": slide_id,
+                "header": slide.get("header"),
+                "type": slide_type,
+            }
+            slide_suggestions["final"] = {
+                "action": "keep",
+                "reason": "Non-panel slides are not processed in Stage 2.5",
             }
             suggestions["slides"][slide_id] = slide_suggestions
             continue
 
         # --------------------------------------
-        # META (for humans + auditing)
+        # META
         # --------------------------------------
         content = slide.get("content", {})
-        blocks = content.get("blocks", [])
+        blocks = content.get("blocks", []) if isinstance(content, dict) else []
 
         slide_suggestions["meta"] = {
             "id": slide_id,
@@ -187,146 +203,92 @@ def run_stage2_5(module_stage2: Dict[str, Any], llm: LLMClient) -> Dict[str, Any
                 block.get("text") if block.get("type") == "paragraph"
                 else f"[bullets: {len(block.get('items', []))}]"
                 for block in blocks[:2]
+                if isinstance(block, dict)
             ],
         }
 
+        paragraph_blocks = [b for b in blocks if isinstance(b, dict) and b.get("type") == "paragraph"]
+        panel_text = " ".join((b.get("text") or "") for b in paragraph_blocks).strip()
+        panel_wc = word_count(panel_text) if panel_text else 0
 
-        # ======================================================
-        # 🔹 PANEL HANDLING (LLM FINAL SPLIT — IMMUTABLE TEXT)
-        # ======================================================
-        
+        routing = classify_panel(slide)
 
-        if slide_type == "panel":
+        # -------------------------------
+        # NO ACTION → keep panel as-is
+        # -------------------------------
+        if routing == PanelRouting.NO_ACTION:
+            slide_suggestions["panel_final"] = {
+                "action": "keep",
+                "source_word_count": panel_wc,
+                "slides": [{"header": slide.get("header"), "content": blocks}],
+            }
 
-            content = slide.get("content", {})
-            blocks = content.get("blocks", [])
+        # -------------------------------
+        # STRUCTURAL SPLIT (deterministic)
+        # -------------------------------
+        elif routing == PanelRouting.BLOCK_SPLIT:
+            split_blocks = split_panel_blocks(blocks)
+            slide_suggestions["panel_final"] = {
+                "action": "split",
+                "source_word_count": panel_wc,
+                "slides": [
+                    {
+                        "header": slide.get("header") if i == 0 else f"{slide.get('header')} (continued)",
+                        "content": group,
+                    }
+                    for i, group in enumerate(split_blocks)
+                ],
+            }
 
-            paragraph_blocks = [b for b in blocks if b.get("type") == "paragraph"]
-            bullet_blocks = [b for b in blocks if b.get("type") == "bullets"]
+        # -------------------------------
+        # SEMANTIC INDEX (LLM-guided split)
+        # -------------------------------
+        elif routing == PanelRouting.SEMANTIC_INDEX:
+            paragraph_texts = [b.get("text", "").strip() for b in paragraph_blocks if b.get("text", "").strip()]
 
-            panel_text = " ".join(b["text"] for b in paragraph_blocks).strip()
-            if not panel_text and bullet_blocks:
-                panel_wc = 0
-            panel_wc = word_count(panel_text) if panel_text else 0
+            groups: list[str] = []
+            if paragraph_texts:
+                groups.append(paragraph_texts[0])
+            if len(paragraph_texts) > 1:
+                groups.append(" ".join(paragraph_texts[1:]).strip())
 
-            routing = classify_panel(slide)
+            built_slides: list[dict] = []
+            for gi, gtext in enumerate(groups):
+                base_header = slide.get("header") if gi == 0 else f"{slide.get('header')} (continued)"
+                split_parts = _split_text_strict_30_70(llm, base_header, gtext)
+                built_slides.extend(split_parts)
 
-            # -------------------------------
-            # NO ACTION → keep panel as-is
-            # -------------------------------
-            if routing == PanelRouting.NO_ACTION:
-                slide_suggestions["panel_final"] = {
-                    "action": "keep",
-                    "source_word_count": panel_wc,
-                    "slides": [
-                        {
-                            "header": slide.get("header"),
-                            "content": blocks,
-                        }
-                    ],
-                }
+            # ✅ Normalize to blocks
+            slides_out = []
+            for s in built_slides:
+                slides_out.append({
+                    "header": s["header"],
+                    "content": _as_paragraph_blocks(s.get("content", "")),
+                })
 
-            # -------------------------------
-            # STRUCTURAL SPLIT (Stage 2.5)
-            # -------------------------------
-            elif routing == PanelRouting.BLOCK_SPLIT:
-                split_blocks = split_panel_blocks(blocks)
+            slide_suggestions["panel_final"] = {
+                "action": "split" if len(slides_out) > 1 else "keep",
+                "source_word_count": panel_wc,
+                "slides": slides_out if slides_out else [{"header": slide.get("header"), "content": blocks}],
+            }
 
-                slide_suggestions["panel_final"] = {
-                    "action": "split",
-                    "source_word_count": panel_wc,
-                    "slides": [
-                        {
-                            "header": slide.get("header") if i == 0 else f"{slide.get('header')} (continued)",
-                            "content": group,
-                        }
-                        for i, group in enumerate(split_blocks)
-                    ],
-                }
+        # -------------------------------
+        # SEMANTIC SPLIT (single long paragraph)
+        # -------------------------------
+        elif routing == PanelRouting.SEMANTIC_SPLIT:
+            split_parts = _split_text_strict_30_70(llm, slide.get("header"), panel_text)
 
-            # -------------------------------
-            # SEMANTIC SPLIT (LLM)
-            # -------------------------------
-            elif routing == PanelRouting.SEMANTIC_INDEX:
-                # ✅ Paragraph-boundary aware grouping:
-                # Group 1 = paragraph 1
-                # Group 2 = remaining paragraphs combined
-                paragraph_texts = [b["text"].strip() for b in paragraph_blocks if b.get("text", "").strip()]
+            slides_out = [{
+                "header": s["header"],
+                "content": _as_paragraph_blocks(s.get("content", "")),
+            } for s in split_parts]
 
-                groups: list[str] = []
-                if paragraph_texts:
-                    groups.append(paragraph_texts[0])
-                if len(paragraph_texts) > 1:
-                    groups.append(" ".join(paragraph_texts[1:]).strip())
+            slide_suggestions["panel_final"] = {
+                "action": "split" if len(slides_out) > 1 else "keep",
+                "source_word_count": panel_wc,
+                "slides": slides_out if slides_out else [{"header": slide.get("header"), "content": blocks}],
+            }
 
-                # Now enforce 30–70 within each group (without crossing paragraph boundaries)
-                built_slides: list[dict] = []
-                for gi, gtext in enumerate(groups):
-                    base_header = slide.get("header") if gi == 0 else f"{slide.get('header')} (continued)"
-                    split_parts = _split_text_strict_30_70(llm, base_header, gtext)
-
-                    # If the splitter returned continued headers internally, keep them as-is
-                    built_slides.extend(split_parts)
-
-                slide_suggestions["panel_final"] = {
-                    "action": "split" if len(built_slides) > 1 else "keep",
-                    "source_word_count": panel_wc,
-                    "slides": built_slides if built_slides else [
-                        {"header": slide.get("header"), "content": panel_text, "word_count": panel_wc}
-                    ],
-                }
-
-            elif routing == PanelRouting.SEMANTIC_SPLIT:
-                # Single paragraph overlong → split within that paragraph
-                split_parts = _split_text_strict_30_70(llm, slide.get("header"), panel_text)
-                slide_suggestions["panel_final"] = {
-                    "action": "split" if len(split_parts) > 1 else "keep",
-                    "source_word_count": panel_wc,
-                    "slides": split_parts if split_parts else [
-                        {"header": slide.get("header"), "content": panel_text, "word_count": panel_wc}
-                    ],
-                }
-
-        # ======================================================
-        # 🔹 ENGAGE 1
-        # ======================================================
-        if slide_type == "engage":
-            items = [
-                " ".join(item.get("content", []))
-                for item in slide.get("items", [])
-            ]
-
-            if any(engage_item_exceeds_soft_limit(t) for t in items):
-                prompt = engage1_item_review_prompt(items)
-                raw = llm.call(prompt)
-                ok, validated_or_err = validate_engage1_item_review(raw)
-                slide_suggestions["engage1_item_review"] = validated_or_err
-
-        # ======================================================
-        # 🔹 BUTTON LABELS
-        # ======================================================
-        if slide_type in ("engage", "engage2"):
-            invalid = False
-            context = ""
-
-            if slide_type == "engage":
-                for item in slide.get("items", []):
-                    if button_label_invalid(item.get("button_label")):
-                        invalid = True
-                        context += " ".join(item.get("content", [])) + "\n"
-
-            if slide_type == "engage2":
-                if button_label_invalid(slide.get("button", {}).get("label")):
-                    invalid = True
-                    context = " ".join(slide.get("steps", []))
-
-            if invalid:
-                prompt = button_label_prompt(context)
-                raw = llm.call(prompt)
-                ok, validated_or_err = validate_button_label_suggestions(raw)
-                slide_suggestions["button_label_suggestions"] = validated_or_err
-
-        if slide_suggestions:
-            suggestions["slides"][slide_id] = slide_suggestions
+        suggestions["slides"][slide_id] = slide_suggestions
 
     return suggestions

@@ -4,6 +4,9 @@ from pathlib import Path
 import sys
 
 
+RAW_DIR = Path("data/raw")  # ← adjust if needed
+
+
 def inspect_docx(path: Path) -> None:
     doc = Document(path)
 
@@ -34,15 +37,39 @@ def inspect_docx(path: Path) -> None:
                     )
 
 
-def main(argv):
-    if len(argv) != 2:
-        print(
-            "Usage:\n"
-            "  python -m src.debug.inspect_word_structure <docx_path>"
-        )
-        return 1
+def resolve_input_path(argv) -> Path:
+    # Case 1: explicit path provided
+    if len(argv) == 2:
+        path = Path(argv[1])
+        if not path.exists():
+            raise SystemExit(f"❌ File not found: {path}")
+        if path.suffix.lower() != ".docx":
+            raise SystemExit("❌ Input file must be a .docx")
+        return path
 
-    inspect_docx(Path(argv[1]))
+    # Case 2: auto-scan directory
+    if len(argv) == 1:
+        docs = list(RAW_DIR.glob("*.docx"))
+
+        if not docs:
+            raise SystemExit(f"❌ No .docx files found in {RAW_DIR}")
+        if len(docs) > 1:
+            raise SystemExit(
+                f"❌ Multiple .docx files found in {RAW_DIR}:\n"
+                + "\n".join(f"  - {d.name}" for d in docs)
+            )
+
+        return docs[0]
+
+    raise SystemExit(
+        "Usage:\n"
+        "  python -m src.debug.inspect_word_structure [optional_docx_path]"
+    )
+
+
+def main(argv):
+    path = resolve_input_path(argv)
+    inspect_docx(path)
     return 0
 
 

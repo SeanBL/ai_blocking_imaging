@@ -20,6 +20,22 @@ if not OPENAI_API_KEY:
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
+def _extract_json_block(text: str) -> str | None:
+    """
+    Extract the outermost JSON object from text.
+    Returns None if no valid JSON block is found.
+    """
+    if not text:
+        return None
+
+    start = text.find("{")
+    end = text.rfind("}")
+
+    if start == -1 or end == -1 or end <= start:
+        return None
+
+    return text[start : end + 1]
+
 # -------------------------------------------------
 # Public helper: call LLM and return JSON
 # -------------------------------------------------
@@ -28,7 +44,7 @@ def call_llm_json(
     prompt: str,
     model: str = "gpt-5.2-2025-12-11",
     temperature: float = 0.0,
-    max_tokens: int = 1200,
+    max_tokens: int = 4500,
     max_retries: int = 3,
     stage_tag: str = "Stage 2.8",
 ) -> Dict[str, Any]:
@@ -69,7 +85,17 @@ def call_llm_json(
 
             try:
                 return json.loads(output)
-            except json.JSONDecodeError as e:
+
+            except json.JSONDecodeError:
+                # --- Attempt safe recovery: trim to outer JSON ---
+                repaired = _extract_json_block(output)
+
+                if repaired:
+                    try:
+                        return json.loads(repaired)
+                    except json.JSONDecodeError:
+                        pass  # fall through to debug + retry
+
                 # 🔍 DEBUG: capture raw output once per failure
                 debug_path = f"debug_pass1_{stage_tag.replace(' ', '_')}.txt"
 
@@ -79,7 +105,7 @@ def call_llm_json(
                     f.write("\n\n===== END =====\n")
 
                 logging.error(
-                    f"[{stage_tag}] JSON parse failed. "
+                    f"[{stage_tag}] JSON parse failed even after repair. "
                     f"Raw output written to {debug_path}"
                 )
                 raise

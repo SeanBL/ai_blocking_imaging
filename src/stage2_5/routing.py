@@ -14,6 +14,10 @@ class PanelRouting(str, Enum):
 
 
 def classify_panel(slide: Dict[str, Any]) -> PanelRouting:
+    notes = (slide.get("notes") or "").lower()
+    if "[[locked]]" in notes:
+        return PanelRouting.NO_ACTION
+    
     if slide.get("type") != "panel":
         return PanelRouting.NO_ACTION
 

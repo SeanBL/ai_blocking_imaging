@@ -1,6 +1,6 @@
 import json
 
-
+MODEL_NAME = "gpt-4o"
 SYSTEM_PROMPT = (
     "You are a medical editor and instructional designer.\n"
     "Your task is to restructure medical content into interactive engages.\n\n"
@@ -102,6 +102,10 @@ def synthesize_engage(source_text: str, engage_type: str, client) -> dict:
     Call LLM to synthesize an Engage 1 or Engage 2 block.
     Text-frozen: no paraphrasing allowed.
     """
+
+    if client is None:
+        raise RuntimeError("LLM client is required for engage synthesis")
+
     if engage_type == "engage":
         prompt = ENGAGE1_PROMPT.format(source_text=source_text)
     elif engage_type == "engage2":
@@ -110,7 +114,7 @@ def synthesize_engage(source_text: str, engage_type: str, client) -> dict:
         raise ValueError(f"Unknown engage_type: {engage_type}")
 
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model=MODEL_NAME,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt}
@@ -125,4 +129,12 @@ def synthesize_engage(source_text: str, engage_type: str, client) -> dict:
     print("--- END RAW LLM OUTPUT ---\n")
 
     clean = _strip_code_fences(content)
-    return json.loads(clean)
+    data = json.loads(clean)
+
+    # Lightweight structural assertions
+    if engage_type == "engage":
+        assert "intro" in data and "items" in data, "Invalid Engage 1 structure"
+    elif engage_type == "engage2":
+        assert "intro" in data and "steps" in data, "Invalid Engage 2 structure"
+
+    return data

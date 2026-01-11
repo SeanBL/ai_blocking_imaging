@@ -33,6 +33,9 @@ def process_quiz_slide(slide: Dict[str, Any]) -> None:
         raise ValueError("Quiz slide missing quiz_id")
 
     for q in slide.get("questions", []):
+        if "questions" not in slide:
+            raise RuntimeError(f"Quiz slide {quiz_id} missing questions array")
+        
         qid = q.get("question_id")
 
         normalize_question(q)

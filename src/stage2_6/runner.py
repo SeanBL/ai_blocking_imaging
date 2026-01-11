@@ -43,6 +43,15 @@ def run_stage2_6(
         slide_id = slide.get("id")
         slide_type = slide.get("type")
 
+        # 🔒 HARD LOCK — absolutely no processing
+        notes_lower = (slide.get("notes") or "").lower()
+        if "[[locked]]" in notes_lower:
+            out["slides"][slide_id] = {
+                "passthrough": True,
+                "slide": slide
+            }
+            continue
+
         # ✅ PASS THROUGH non-panel slides unchanged
         if slide_type != "panel":
             out["slides"][slide_id] = {
