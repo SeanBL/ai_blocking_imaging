@@ -9,6 +9,7 @@ from docx import Document
 from .docx_formatting import (
     init_document_styles,
     add_slide_table,
+    add_quiz_table,   # NEW
 )
 from .mapping import slide_to_table_rows
 
@@ -68,13 +69,21 @@ def export_module_to_docx(module_json: Dict[str, Any], out_path: Path) -> None:
 
         rows = slide_to_table_rows(slide)
 
-        add_slide_table(
-            doc=doc,
-            header_text=header_text,
-            rows=rows,
-        )
+        slide_type = (slide.get("slide_type") or slide.get("type") or "").lower()
+
+        if slide_type == "quiz":
+            # Optional quiz heading
+            doc.add_paragraph(header_text)
+            add_quiz_table(doc, rows)
+        else:
+            add_slide_table(
+                doc=doc,
+                header_text=header_text,
+                rows=rows,
+            )
 
         doc.add_paragraph("")
+
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     doc.save(str(out_path))

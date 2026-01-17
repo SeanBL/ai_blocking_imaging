@@ -22,6 +22,53 @@ load_dotenv()
 
 client = OpenAI()
 
+def assert_stage2_5_invariants(
+    *,
+    module_stage2: Dict[str, Any],
+    stage2_5: Dict[str, Any],
+) -> None:
+    """
+    HARD FAIL invariants for Stage 2.5.
+
+    Stage 2.5 must:
+    - Preserve slide identity (id or uuid)
+    - Produce suggestions for at least one slide
+    - Never collapse slides under a null key
+    """
+
+    slides_in = module_stage2.get("slides", [])
+    slides_out = stage2_5.get("slides", {})
+
+    if not slides_in:
+        raise ValueError("Stage 2.5 invariant failed: input module has no slides")
+
+    if not isinstance(slides_out, dict) or not slides_out:
+        raise ValueError("Stage 2.5 invariant failed: no slide suggestions produced")
+
+    if "null" in slides_out:
+        raise ValueError(
+            "Stage 2.5 invariant failed: slide identity collapsed under key 'null'. "
+            "Likely missing id/uuid handling."
+        )
+
+    # Ensure every input panel slide is addressable
+    input_ids = set()
+    for slide in slides_in:
+        sid = slide.get("id") or slide.get("uuid")
+        if not sid:
+            raise ValueError(
+                "Stage 2.5 invariant failed: slide missing both 'id' and 'uuid'"
+            )
+        input_ids.add(sid)
+
+    output_ids = set(slides_out.keys())
+
+    if not output_ids.issubset(input_ids):
+        unknown = output_ids - input_ids
+        raise ValueError(
+            f"Stage 2.5 invariant failed: unknown slide ids in output: {sorted(unknown)}"
+        )
+
 
 def llm_dispatch(prompt: str) -> Any:
     if (
@@ -84,6 +131,12 @@ def main(argv: list[str]) -> int:
     # ----------------------------------
     llm = LLMClient(llm_dispatch)
     suggestions = run_stage2_5(module_stage2, llm)
+
+    # 🚨 HARD FAIL if Stage 2.5 invariants are violated
+    assert_stage2_5_invariants(
+        module_stage2=module_stage2,
+        stage2_5=suggestions,
+    )
 
     write_json(suggestions_path, suggestions)
     print(f"✅ Stage 2.5 suggestions written to: {suggestions_path}")

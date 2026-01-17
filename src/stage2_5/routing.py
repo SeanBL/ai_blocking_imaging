@@ -50,7 +50,7 @@ def classify_panel(slide: Dict[str, Any]) -> PanelRouting:
 
     # Single paragraph
     block = blocks[0]
-    if block["type"] == "paragraph" and word_count(block["text"]) > 70:
+    if block["type"] == "paragraph" and word_count(block["text"]) > 80:
         return PanelRouting.SEMANTIC_SPLIT
 
     return PanelRouting.NO_ACTION

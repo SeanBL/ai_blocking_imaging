@@ -31,7 +31,7 @@ def run_quiz_pipeline(
     quiz_id: int,
     inline_direct_questions: int,
     final_direct_questions: int,
-    module_application_questions: int = 1,
+    module_application_questions: int,
     source_paragraphs: List[str],
 ) -> Dict[str, Any]:
     """
@@ -224,9 +224,39 @@ def run_quiz_pipeline(
         return fixed_quiz
 
     # -------------------------------------------------
-    # 5) HARD STOP
+    # 4.5) SELF-HEAL: APPLY REVIEWER FIXES ONCE, RE-REVIEW
     # -------------------------------------------------
-    logger.error(f"Quiz failed after editor — quiz_id={quiz_id}")
+    logger.warning(
+        f"Reviewer failed after editor — attempting deterministic self-heal — quiz_id={quiz_id}"
+    )
+
+    healed_quiz, healed_applied = apply_reviewer_fixes(
+        quiz_payload=fixed_quiz,
+        review_result=final_review,
+    )
+
+    if healed_applied > 0:
+        validate_quiz_payload(
+            payload=healed_quiz,
+            quiz_id=quiz_id,
+            expected_count=total_questions,
+        )
+
+        healed_review = review_quiz_quality(
+            quiz_payload=healed_quiz,
+            source_paragraphs=source_paragraphs,
+        )
+
+        if healed_review.get("status") == "PASS":
+            logger.info(
+                f"Stage 2.8 quiz pipeline completed after self-heal — quiz_id={quiz_id}"
+            )
+            return healed_quiz
+
+    # -------------------------------------------------
+    # 5) HARD STOP (NO MORE RETRIES)
+    # -------------------------------------------------
+    logger.error(f"Quiz failed after editor + self-heal — quiz_id={quiz_id}")
     logger.warning(f"Reviewer issues — {final_review.get('issues')}")
 
     raise RuntimeError(f"Quiz {quiz_id} failed quality review after editor")

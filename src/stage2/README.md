@@ -1,33 +1,86 @@
-# Stage 2 — Deterministic Normalization (NO LLM)
+## Stage 2 — Deterministic Normalization
 
-## Purpose (plain English)
-Stage 1 correctly reads complex Word tables and produces JSON.
-However, Stage 1 output can still have small structural variations:
-- strings vs lists of paragraphs
-- engage item keys named differently
-- missing engage intro wrappers
-- engage2 build stored under different keys
+### Purpose
 
-Stage 2 fixes ONLY the *shape*, not the meaning.
+Stage 2 converts the structurally faithful output of Stage 1 into a **canonical, deterministic JSON schema**.
 
-Stage 2 does NOT:
-- parse Word
-- rewrite text
-- split/merge paragraphs
-- call any LLM/API
+Stage 2 performs **no pedagogy inference**, **no content creation**, and **no interpretation**.  
+Its only responsibility is to normalize structure, whitespace, and field placement so downstream stages can rely on a stable shape.
 
-Stage 2 DOES:
-- Normalize Engage 1 into:
-  - intro { title, content[] }
-  - items[] { button_label, title, content[] }
-- Normalize Engage 2 into:
-  - button_label (single progressive button)
-  - build[] { title, content[] }
-- Preserve panels/pages as-is (only whitespace + list normalization)
+---
 
-## Inputs / Outputs
-Input:  module_v3.json  (Stage 1 output)
-Output: module_stage2.json (canonical, renderer-friendly)
+### Inputs
+
+Stage 2 consumes the JSON produced by Stage 1 and assumes:
+
+- Slide boundaries are already correct
+- `slide_type` is authoritative (`panel`, `engage1`, `engage2`)
+- All text has already been extracted from the Word document
+- Button labels (if any) already exist
+- No semantic interpretation is required
+
+Stage 2 trusts Stage 1 and does not attempt to repair or reinterpret it.
+
+---
+
+### Outputs
+
+Stage 2 emits a normalized module JSON with:
+
+- Deterministic UUIDs (preserved if present, generated if missing)
+- Normalized whitespace (trimmed, collapsed, NBSP removed)
+- Canonical slide schemas based on `slide_type`
+- Preserved content ordering
+
+No information is added, removed, or inferred.
+
+---
+
+### Slide Normalization
+
+#### Panel Slides
+
+- `header`, `image`, and `notes` are preserved
+- `content.blocks` is preserved exactly
+- Paragraphs and bullet lists remain unchanged
+
+No restructuring or interpretation occurs.
+
+---
+
+#### Engage 1 Slides
+
+- Intro content is preserved
+- Engage items are preserved
+- Per-item images and button labels are preserved
+- No items or labels are created or modified
+
+Stage 2 does not assign pedagogical meaning.
+
+---
+
+#### Engage 2 Slides
+
+- `content.button_labels` from Stage 1 are preserved verbatim
+- Paragraph blocks are reshaped into a sequential `build` list
+- Ordering is preserved exactly
+- No button labels are inferred or synthesized
+
+Stage 2 does not infer build logic or invent defaults.
+
+---
+
+### Explicit Non-Responsibilities
+
+Stage 2 must never:
+
+- Create or infer button labels
+- Invent default values (e.g. "Next")
+- Interpret pedagogical intent
+- Decide build sequencing logic
+- Create or remove slides
+- Reorder content
+- Modify semantic meaning
 
 ## Run
 python -m src.stage2.stage2_transform \
@@ -35,39 +88,3 @@ python -m src.stage2.stage2_transform \
   data/processed/module_stage2.json
 
 
----
-
-## Stage 2 Renderer (Final Assembly)
-
-Stage 2.5 and Stage 2.6 do **not** modify the module directly.
-They produce *suggestions* only.
-
-The Stage 2 renderer is responsible for:
-- Applying panel splits from Stage 2.5 (`panel_final`)
-- Applying sentence shaping from Stage 2.6
-- Producing the final, renderer-ready Stage 2 module
-
-The renderer is:
-- Deterministic
-- LLM-free
-- Order-preserving
-- Guaranteed not to modify wording
-
-### Renderer Input / Output
-
-Inputs:
-- `module_stage2.json` (base normalized module)
-- `module_stage2_5_suggestions.json`
-- `module_stage2_6_suggestions.json`
-
-Output:
-- `module_stage2_final.json`
-
-### Run Renderer
-
-```bash
-python -m src.stage2.render_module \
-  data/processed/module_stage2.json \
-  data/processed/module_stage2_5_suggestions.json \
-  data/processed/module_stage2_6_suggestions.json \
-  data/processed/module_stage2_final.json

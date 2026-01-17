@@ -15,12 +15,24 @@ ABSOLUTE RULES (NO EXCEPTIONS):
 - DO NOT split bullet lists.
 
 GOAL:
-Split the panel into 2 or more panels if the total length exceeds 70 words.
+Split the panel into multiple panels if the total length exceeds ~80 words.
+Target clear instructional pacing and semantic coherence.
+
+PREFERRED PANEL SIZE:
+- Aim for 40–80 words per panel.
+
+ALLOWED EXCEPTIONS (ONLY WHEN NECESSARY):
+- Panels MAY be as short as 30 words or as long as 100 words
+- ONLY if further splitting would:
+  • break a single explanatory idea
+  • separate cause from effect
+  • split a definition from its explanation
+  • reduce pedagogical clarity
 
 CONSTRAINTS:
-- Each resulting panel MUST be 30–70 words.
+- Do NOT avoid splitting simply to stay within limits.
 - If a panel would be under 30 words, MERGE it with the nearest adjacent panel.
-- Preserve pedagogical coherence.
+- Preserve semantic and instructional coherence above all.
 
 OUTPUT FORMAT (JSON ONLY):
 {{
@@ -39,8 +51,6 @@ OUTPUT FORMAT (JSON ONLY):
 SOURCE TEXT (DO NOT MODIFY):
 {source_text}
 """.strip()
-
-
 
 
 def strict_sentence_reflow_prompt(text: str) -> str:

@@ -4,7 +4,16 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Dict, Any, List
+import re
 
+QUIZ_MARKER_RE = re.compile(
+    r"\[\[QUIZ:\d+(?::QUESTIONS=\d+,\d+)?\]\]"
+)
+
+def strip_quiz_markers(notes: str | None) -> str | None:
+    if not notes:
+        return notes
+    return re.sub(r"\s{2,}", " ", QUIZ_MARKER_RE.sub("", notes)).strip()
 
 def load_json(path: Path) -> Dict[str, Any]:
     if not path.exists():
@@ -41,7 +50,9 @@ def apply_stage2_5_splits(
     s25_slides = stage2_5.get("slides", {})
 
     for slide in module_stage2.get("slides", []):
-        slide_id = slide.get("id")
+        slide_id = slide.get("uuid") or slide.get("id")
+        if not slide_id:
+            raise ValueError("Stage 2.5 APPLY invariant failed: slide missing uuid/id")
         slide_type = slide.get("slide_type") or slide.get("type")
 
         s25_entry = s25_slides.get(slide_id)
@@ -109,11 +120,15 @@ def apply_stage2_5_splits(
                         })
 
             new_slide = {
-                "id": f"{slide_id}__p{idx + 1}",
+                "uuid": f"{slide_id}__p{idx + 1}",
+                "type": "panel",
                 "header": panel.get("header"),
-                "slide_type": "panel",
+                "notes": (
+                    slide.get("notes")
+                    if idx == 0
+                    else strip_quiz_markers(slide.get("notes"))
+                ),
                 "image": slide.get("image"),
-                "notes": slide.get("notes"),
                 "content": {
                     "blocks": blocks,
                 },
@@ -122,9 +137,19 @@ def apply_stage2_5_splits(
             new_slides.append(new_slide)
 
 
+    # --------------------------------------------------
+    # 🔒 APPLY INVARIANTS (FAIL FAST)
+    # --------------------------------------------------
+    if not new_slides:
+        raise ValueError("Stage 2.5 APPLY invariant failed: no slides produced")
+
+    if any(s.get("uuid") is None for s in new_slides):
+        raise ValueError("Stage 2.5 APPLY invariant failed: slide with null uuid produced")
+
     out = dict(module_stage2)
     out["slides"] = new_slides
     return out
+
 
 
 # --------------------------------------------------

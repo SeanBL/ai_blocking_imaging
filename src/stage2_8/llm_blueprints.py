@@ -74,6 +74,7 @@ def _log_role_summary(
         f"(strict_role_counts={bool(expected.get('strict_role_counts'))})"
     )
 
+
 def _rebalance_blueprint_roles(
     *,
     blueprints: List[Dict[str, Any]],
@@ -82,12 +83,38 @@ def _rebalance_blueprint_roles(
     """
     Deterministically rebalance blueprint roles to satisfy exact role counts.
     Returns True if any changes were made.
+
+    IMPORTANT:
+    - We must keep role-specific constraints consistent after changing quiz_role.
+      validate_pass2_blueprints enforces, for example:
+        - final_direct => question_style='direct' and cognitive_level in {'recall','interpret'}
     """
 
-    def count_roles():
+    def normalize_for_role(bp: Dict[str, Any], role: str) -> None:
+        """
+        Enforce the minimal role-specific invariants required by validate_pass2_blueprints.
+        Only touches fields that the validator ties directly to the role.
+        """
+        if role in ("inline_direct", "final_direct"):
+            # Direct roles must be direct + lower cognitive load
+            bp["question_style"] = "direct"
+            # Prefer existing allowed value if already compliant; else default deterministically
+            cl = bp.get("cognitive_level")
+            if cl not in ("recall", "interpret"):
+                bp["cognitive_level"] = "recall"
+        elif role == "module_application":
+            # Keep application as-is; don't force anything extra here
+            # (validator rules for module_application may exist elsewhere)
+            pass
+
+    def set_role(bp: Dict[str, Any], new_role: str) -> None:
+        bp["quiz_role"] = new_role
+        normalize_for_role(bp, new_role)
+
+    def count_roles() -> Dict[str, int]:
         counts = {"inline_direct": 0, "final_direct": 0, "module_application": 0}
         for bp in blueprints:
-            role = bp.get("role")
+            role = bp.get("quiz_role")
             if role in counts:
                 counts[role] += 1
         return counts
@@ -95,24 +122,33 @@ def _rebalance_blueprint_roles(
     changed = False
     counts = count_roles()
 
-    # Never touch module_application count
-    # Only rebalance inline_direct <-> final_direct
+    # -------------------------------------------------
+    # If module_application is NOT allowed, downgrade all to final_direct
+    # -------------------------------------------------
+    if expected.get("module_application", 0) == 0 and counts["module_application"] > 0:
+        for bp in blueprints:
+            if bp.get("quiz_role") == "module_application":
+                set_role(bp, "final_direct")
+                changed = True
+        counts = count_roles()
 
-    # Too many inline_direct → convert to final_direct
+    # -------------------------------------------------
+    # Rebalance inline_direct <-> final_direct
+    # -------------------------------------------------
+
     while counts["inline_direct"] > expected["inline_direct"]:
         for bp in blueprints:
-            if bp.get("role") == "inline_direct":
-                bp["role"] = "final_direct"
+            if bp.get("quiz_role") == "inline_direct":
+                set_role(bp, "final_direct")
                 counts["inline_direct"] -= 1
                 counts["final_direct"] += 1
                 changed = True
                 break
 
-    # Too many final_direct → convert to inline_direct
     while counts["final_direct"] > expected["final_direct"]:
         for bp in blueprints:
-            if bp.get("role") == "final_direct":
-                bp["role"] = "inline_direct"
+            if bp.get("quiz_role") == "final_direct":
+                set_role(bp, "inline_direct")
                 counts["final_direct"] -= 1
                 counts["inline_direct"] += 1
                 changed = True
@@ -193,9 +229,6 @@ def generate_question_blueprints(
     blueprints: List[Dict[str, Any]] = parsed["blueprints"]
 
     # ---- Strict validation (roles + constraints) ----
-    # If we have split counts, enforce exact role counts.
-    # If we only have total_questions (legacy), enforce total count + per-item constraints
-    # (note: role count enforcement requires split counts).
     if expected["strict_role_counts"]:
         result = validate_pass2_blueprints(
             payload={"quiz_id": quiz_id, "blueprints": blueprints},
@@ -205,8 +238,6 @@ def generate_question_blueprints(
             expected_total=expected["expected_total"],
         )
     else:
-        # Legacy: we can only validate totals + per-item constraints if roles exist.
-        # If roles are missing, this will fail (as desired).
         result = validate_pass2_blueprints(
             payload={"quiz_id": quiz_id, "blueprints": blueprints},
             expected_inline_direct=0,
@@ -259,9 +290,9 @@ def generate_question_blueprints(
                 f"Top errors: {top_errors}"
             )
 
-
     # Ensure quiz_id is set (and authoritative)
     parsed["quiz_id"] = quiz_id
     return parsed
+
 
 

@@ -12,7 +12,8 @@ from .quiz_insert import insert_quiz_slides
 
 BASE_DIR = Path("data/processed")
 
-STAGE2_5_PATH = BASE_DIR / "module_stage2_after_2_5.json"
+STAGE2_5_APPLIED_PATH = BASE_DIR / "module_stage2_after_2_5.json"
+STAGE2_6_PATH = BASE_DIR / "module_stage2_6.json"
 OUTPUT_PATH  = BASE_DIR / "module_stage2_8.json"
 
 
@@ -75,20 +76,29 @@ def _insert_application_slides_before_final(
 def main() -> None:
     logger.info("Stage 2.8 MAIN starting")
 
-    logger.info(f"Loading Stage 2.5 canonical (post-split): {STAGE2_5_PATH}")
-    module_stage2_5 = load_json(STAGE2_5_PATH)
+    logger.info(f"Loading Stage 2.5 canonical (post-split): {STAGE2_5_APPLIED_PATH}")
+    logger.info(f"Loading Stage 2.6 annotations: {STAGE2_6_PATH}")
+    module_stage2 = load_json(STAGE2_5_APPLIED_PATH)
+    stage2_6 = load_json(STAGE2_6_PATH)
 
-    slides = module_stage2_5.get("slides")
+    logger.info(
+        "DEBUG Stage 2.6 structure | "
+        f"type(stage2_6)={type(stage2_6)} | "
+        f"type(stage2_6['slides'])="
+        f"{type(stage2_6.get('slides')) if isinstance(stage2_6, dict) else 'N/A'}"
+    )
+
+    slides = module_stage2.get("slides")
     if not isinstance(slides, list) or not slides:
         raise RuntimeError("Stage 2.5 module has invalid or empty slides")
-
-    if not slides:
-        raise RuntimeError("Stage 2.6 module has zero slides")
 
     # ----------------------------
     # Run Stage 2.8 orchestration
     # ----------------------------
-    result = run_stage2_8(module_json=module_stage2_5)
+    result = run_stage2_8(
+        module_json=module_stage2,
+        sentence_annotations=stage2_6,
+    )
 
     inline_quizzes = result.get("inline_quizzes", {})
     final_quizzes = result.get("final_quizzes", {})
@@ -157,7 +167,7 @@ def main() -> None:
     # ----------------------------
     # Write output
     # ----------------------------
-    output_module = dict(module_stage2_5)
+    output_module = dict(module_stage2)
     output_module["slides"] = new_slides
 
     write_json(OUTPUT_PATH, output_module)

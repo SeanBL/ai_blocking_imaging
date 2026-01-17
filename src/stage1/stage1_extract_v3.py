@@ -82,6 +82,9 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
     engage1_intro_row_pending = False
     collecting_button_labels = False
 
+    # Engage2 state
+    engage2_mode = False
+
     engage_intro_parts: List[str] = []
     engage_intro_image: Optional[str] = None
     engage_intro_notes: List[str] = []
@@ -89,8 +92,11 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
 
     def reset_engage_state():
         nonlocal engage1_mode, engage1_intro_row_pending, collecting_button_labels
+        nonlocal engage2_mode
         nonlocal engage_intro_parts, engage_intro_image, engage_intro_notes, engage_items
+
         engage1_mode = False
+        engage2_mode = False
         engage1_intro_row_pending = False
         collecting_button_labels = False
         engage_intro_parts = []
@@ -109,6 +115,21 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
             cur_slide["slide_type"] = "engage2"
         else:
             cur_slide["slide_type"] = "panel"
+
+        # ------------------------------------------------
+        # IMAGE COLUMN ROUTING (STRUCTURAL — Stage 1)
+        #
+        # For non-Engage1 slides, the Image column represents the slide-level image field.
+        # (Engage1 uses per-intro/per-item images and should NOT be overwritten here.)
+        # ------------------------------------------------
+        if cur_slide["slide_type"] != "engage1":
+            img_lines = []
+            for t in cur_columns.get("image", []):
+                tt = normalize(t)
+                # Avoid treating the Engage2 "Button Labels" sentinel as an image value.
+                if tt and tt.lower() != "button labels":
+                    img_lines.append(tt)
+            cur_slide["image"] = "\n".join(img_lines).strip() or None
 
         if cur_slide["slide_type"] == "engage1":
             labels: List[str] = []
@@ -130,18 +151,21 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
             }
             return
 
-        # Panel / Engage2
-        if cur_slide["slide_type"] != "engage1":
-            if cur_columns.get("image"):
-                img = " ".join(cur_columns["image"]).strip()
-                cur_slide["image"] = img or None
-
+        # -------------------------------
+        # ENGAGE 2 FINALIZATION
+        # -------------------------------
         if cur_slide["slide_type"] == "engage2":
             labels: List[str] = []
             for txt in cur_columns.get("button labels", []):
                 labels.extend([p.strip() for p in txt.split("|") if p.strip()])
+
             if labels:
+                cur_slide.setdefault("content", {})
                 cur_slide["content"]["button_labels"] = labels
+
+            # ✅ SCHEMA GUARD — ADD THIS EXACTLY HERE
+            cur_slide.setdefault("content", {})
+            cur_slide["content"].setdefault("button_labels", [])
 
     def start_new_slide(header_text: str, tbl, header_row_idx: int) -> None:
         nonlocal slide, columns, col_labels, slide_index
@@ -215,8 +239,12 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
                 blob = " ".join(t.lower() for t in notes_texts)
                 if "slide type = engage 1" in blob:
                     engage1_mode = True
+                    engage2_mode = False
                     engage1_intro_row_pending = True
                     collecting_button_labels = False
+                elif "slide type = engage 2" in blob:
+                    engage2_mode = True
+                    engage1_mode = False
 
             # -------------------------------
             # ENGAGE 1 parsing
@@ -280,6 +308,20 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
                 # FIX 3 — engage rows NEVER fall through
                 row_idx += 1
                 continue
+
+            # -------------------------------
+            # ENGAGE 2 button label row
+            # -------------------------------
+            if engage2_mode:
+                if img_texts and img_texts[0].strip().lower() == "button labels":
+                    # STRUCTURAL: button labels live in their own column
+                    if eng_texts:
+                        slide.setdefault("content", {})
+                        slide["content"].setdefault("button_labels", [])
+                        slide["content"]["button_labels"].extend(eng_texts)
+
+                    row_idx += 1
+                    continue
 
             # -------------------------------
             # PANEL parsing (single-pass)
