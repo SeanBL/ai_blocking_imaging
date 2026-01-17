@@ -26,7 +26,7 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 # -------------------------------------------------
 def call_llm_json(
     prompt: str,
-    model: str = "gpt-4o-mini",
+    model: str = "gpt-5.2-2025-12-11",
     temperature: float = 0.0,
     max_tokens: int = 800,
     max_retries: int = 3,

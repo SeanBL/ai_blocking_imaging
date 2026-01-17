@@ -4,6 +4,8 @@ from typing import Any, Dict, List, Tuple
 
 RowTriple = Tuple[str, str, str]
 
+# (english_question, english_answer, translated_question, translated_answer)
+QuizRow = Tuple[str, str, str, str]
 
 def _join_blocks_as_paragraphs(slide: Dict[str, Any]) -> List[Tuple[str, bool]]:
     """
@@ -56,7 +58,7 @@ def slide_to_table_rows(slide: Dict[str, Any]) -> List[RowTriple]:
         return _rows_for_engage2(slide, image)
 
     if slide_type == "quiz":
-        return _rows_for_quiz(slide, image)
+        return _rows_for_quiz(slide)
 
     # --- Panel default ---
     paras = _join_blocks_as_paragraphs(slide)
@@ -67,9 +69,9 @@ def slide_to_table_rows(slide: Dict[str, Any]) -> List[RowTriple]:
 def _rows_for_engage(slide: Dict[str, Any], image: str) -> List[RowTriple]:
     """
     Engage 1 mapping for FINAL Stage 2.9 schema.
-    Engage fields live at the TOP LEVEL:
-      slide["intro"]
-      slide["items"]
+    Layout:
+      - Intro row: notes column contains slide notes
+      - Item rows: notes column contains ONLY the button label
     """
     rows: List[RowTriple] = []
 
@@ -98,8 +100,7 @@ def _rows_for_engage(slide: Dict[str, Any], image: str) -> List[RowTriple]:
         ]
         body_text = "\n\n".join(body_texts)
 
-        notes = f"Button Label: {button}" if button else ""
-        rows.append(("", body_text, notes))
+        rows.append(("", body_text, button))
 
     return rows
 
@@ -136,44 +137,38 @@ def _rows_for_engage2(slide: Dict[str, Any], image: str) -> List[RowTriple]:
 
     return rows
 
-def _rows_for_quiz(slide: Dict[str, Any], image: str) -> List[RowTriple]:
+def _rows_for_quiz(slide: Dict[str, Any]) -> List[QuizRow]:
     """
-    Stage 3B quiz rendering:
-    One row per question.
+    Quiz rows:
+    (English Question, English Answer, Translated Question, Translated Answer)
     """
-    rows: List[RowTriple] = []
+    rows: List[QuizRow] = []
 
     questions = slide.get("questions") or []
-    slide_notes = slide.get("notes") or "Slide Type = Quiz"
 
     for q in questions:
         prompt = q.get("prompt", "").strip()
 
-        # Build options text
         options = q.get("options") or {}
-        option_lines = []
-        for key in sorted(options.keys()):
-            option_lines.append(f"{key}. {options[key]}")
+        option_lines = [
+            f"{k}. {options[k]}" for k in sorted(options.keys())
+        ]
 
-        question_text = "\n\n".join(
-            [prompt, *option_lines]
-        ).strip()
+        english_question = "\n\n".join([prompt, *option_lines]).strip()
 
-        answer = q.get("correct_answer")
+        answer = q.get("correct_answer", "")
         rationale = q.get("rationale", "").strip()
 
-        notes_parts = []
-        if answer:
-            notes_parts.append(f"Answer: {answer}")
+        english_answer = f"Answer: {answer}"
         if rationale:
-            notes_parts.append(rationale)
+            english_answer += f"\n\n{rationale}"
 
-        notes_text = "\n\n".join(notes_parts)
-
-        rows.append(("", question_text, notes_text))
-
-    # Fallback if something went wrong
-    if not rows:
-        rows.append(("", "", slide_notes))
+        rows.append((
+            english_question,
+            english_answer,
+            "",  # translated question (future)
+            "",  # translated answer (future)
+        ))
 
     return rows
+

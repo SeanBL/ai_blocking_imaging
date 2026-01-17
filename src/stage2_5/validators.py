@@ -17,9 +17,10 @@ def sentence_count(text: str) -> int:
 def panel_needs_split(panel_text: str) -> bool:
     """
     Structural rule:
-    Panels > 70 words may need to be split into multiple panels.
+    Panels significantly exceeding the preferred range
+    may need to be split into multiple panels.
     """
-    return word_count(panel_text) > 70
+    return word_count(panel_text) > 80
 
 
 def panel_needs_sentence_reflow(panel_text: str) -> bool:

@@ -11,19 +11,13 @@ from .runner import run_quiz_pipeline
 def run_stage2_8(
     *,
     module_json: Dict[str, Any],
+    sentence_annotations: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     """
     Stage 2.8 orchestration layer.
 
     Produces quiz payloads ONLY.
     Does not insert slides.
-
-    Output contract (STRICT):
-    {
-        "inline_quizzes": { quiz_id: { insert_after_index, questions } },
-        "module_application_quizzes": { quiz_id: { quiz_id, questions } },
-        "final_quizzes": { quiz_id: { quiz_id, questions } }
-    }
     """
 
     slides: List[Dict[str, Any]] = module_json.get("slides", [])
@@ -42,19 +36,32 @@ def run_stage2_8(
     final_quizzes: Dict[int, Dict[str, Any]] = {}
     module_application_quizzes: Dict[int, Dict[str, Any]] = {}
 
+    if sentence_annotations is not None and not isinstance(sentence_annotations, dict):
+            raise TypeError(
+                f"sentence_annotations must be dict or None, got {type(sentence_annotations)}"
+            )
+
     for quiz_id, state in quiz_states.items():
         logger.info(f"Stage 2.8: processing quiz_id={quiz_id}")
 
         source_paragraphs = extract_quiz_source(
             slides=slides,
             quiz_state=state,
+            sentence_annotations=sentence_annotations,  # ✅ NEW
         )
 
+        logger.info(
+            f"[Stage 2.8] QUIZ:{quiz_id} parsed counts — "
+            f"inline={state.immediate_count}, "
+            f"final={state.deferred_count}, "
+            f"application={state.application_count}"
+        )
+        
         quiz_payload = run_quiz_pipeline(
             quiz_id=quiz_id,
             inline_direct_questions=state.immediate_count,
             final_direct_questions=state.deferred_count,
-            module_application_questions=1,
+            module_application_questions=state.application_count,
             source_paragraphs=source_paragraphs,
         )
 
@@ -72,21 +79,18 @@ def run_stage2_8(
             q for q in questions if q["quiz_role"] == "module_application"
         ]
 
-        # Inline quizzes
         if inline_questions:
             inline_quizzes[quiz_id] = {
                 "insert_after_index": state.insert_index,
                 "questions": inline_questions,
             }
 
-        # Final quizzes
         if final_direct_questions:
             final_quizzes[quiz_id] = {
                 "quiz_id": quiz_id,
                 "questions": final_direct_questions,
             }
 
-        # Module-level application quiz
         if application_questions:
             module_application_quizzes[quiz_id] = {
                 "quiz_id": quiz_id,
@@ -100,3 +104,4 @@ def run_stage2_8(
         "module_application_quizzes": module_application_quizzes,
         "final_quizzes": final_quizzes,
     }
+

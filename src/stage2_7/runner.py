@@ -184,14 +184,20 @@ def run_stage2_7(in_path: Path, out_path: Path, client) -> None:
         raise ValueError("module.slides must be a list")
 
     for slide in slides:
-        slide_id = slide.get("id")
+        slide_id = slide.get("uuid") or slide.get("id")
+        if not slide_id:
+            raise ValueError("Stage 2.7 invariant failed: slide missing uuid/id")
         print(f"\n--- SLIDE {slide_id} ---")
 
         # ----------------------------------
         # 1️⃣ Read notes + normalize
         # ----------------------------------
-        notes = slide.get("notes", "")
-        notes_lower = notes.lower() if isinstance(notes, str) else ""
+        notes_sources = [
+            slide.get("notes", ""),
+            slide.get("intro", {}).get("notes", "")
+        ]
+        notes_lower = " ".join(n for n in notes_sources if isinstance(n, str)).lower()
+
 
         # ----------------------------------
         # 2️⃣ HARD STOP: LOCKED slides
@@ -270,9 +276,12 @@ def run_stage2_7(in_path: Path, out_path: Path, client) -> None:
             slide["button_label"] = engage_block.get("button_label", "Next")
 
         # Optional: strip create signal after use
-        slide["notes"] = notes.replace("[[create:engage1]]", "").replace(
-            "[[create:engage2]]", ""
-        ).strip()
+        notes = slide.get("notes", "") if isinstance(slide.get("notes"), str) else ""
+        slide["notes"] = (
+            notes.replace("[[create:engage1]]", "")
+                .replace("[[create:engage2]]", "")
+                .strip()
+        )
 
         # ----------------------------------
         # 🔧 Clean incompatible legacy fields

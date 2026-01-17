@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import ast
+
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -72,11 +72,6 @@ def ensure_uuid(slide: Dict[str, Any], index: int, prefix: str = "stage2") -> No
 def default_engage_item_label(i: int) -> str:
     return f"Item {i}"
 
-
-def default_engage2_button_label() -> str:
-    return "Next"
-
-
 def normalize_text_block(obj: Dict[str, Any], title_keys: List[str], content_keys: List[str]) -> Dict[str, Any]:
     """
     Normalizes a generic text block to:
@@ -141,52 +136,23 @@ def normalize_engage1(slide: Dict[str, Any], index: int) -> Dict[str, Any]:
         "items": slide.get("content", {}).get("items", []),
     }
 
-def normalize_engage2_build(slide: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """
-    Canonical engage2 build:
-      build: [
-        { title: str, content: List[str] }
-      ]
-    """
-    _, raw_build = first_present(slide, ["build", "items", "steps", "sequence", "engage2_items", "engage2Items"])
-
-    if raw_build is None:
-        raw_build = []
-
-    if isinstance(raw_build, dict):
-        raw_build = [raw_build]
-    if isinstance(raw_build, str):
-        raw_build = [{"content": raw_build}]
-    if not isinstance(raw_build, list):
-        raw_build = []
-
-    out: List[Dict[str, Any]] = []
-    for item in raw_build:
-        if isinstance(item, str):
-            out.append({"title": "", "content": normalize_paragraph_list(item)})
-            continue
-
-        if not isinstance(item, dict):
-            out.append({"title": "", "content": normalize_paragraph_list(item)})
-            continue
-
-        normalized_block = normalize_text_block(
-            item,
-            title_keys=["title", "header", "heading", "name"],
-            content_keys=["content", "text", "paragraphs", "body"],
-        )
-        out.append(normalized_block)
-
-    return out
-
-
 def normalize_engage2(slide: Dict[str, Any], index: int) -> Dict[str, Any]:
-    """
-    Normalize Engage 2 slide.
-    Assumes Stage 1 already structured build/steps.
-    """
-
     ensure_uuid(slide, index)
+
+    # 🔒 Stage 2 MUST preserve button labels from Stage 1
+    button_labels = (
+        slide.get("content", {}).get("button_labels", [])
+        if isinstance(slide.get("content"), dict)
+        else []
+    )
+
+    raw_build = slide.get("build") or []
+
+    if not raw_build:
+        raw_build = extract_engage2_build_from_blocks(slide)
+
+    if slide.get("slide_type") == "engage2" and not raw_build:
+        raise ValueError(f"Engage2 slide {slide['uuid']} produced empty build")
 
     return {
         "uuid": slide["uuid"],
@@ -194,10 +160,9 @@ def normalize_engage2(slide: Dict[str, Any], index: int) -> Dict[str, Any]:
         "header": normalize_ws(slide.get("header")),
         "notes": normalize_ws(slide.get("notes")) or None,
         "image": slide.get("image"),
-        "button_label": slide.get("button_label") or "Next",
-        "build": slide.get("build") or [],
+        "button_labels": button_labels,
+        "build": raw_build,
     }
-
 
 def normalize_panel(slide: Dict[str, Any], index: int) -> Dict[str, Any]:
     ensure_uuid(slide, index)
@@ -235,9 +200,37 @@ def transform_slide(slide: Dict[str, Any], index: int) -> Dict[str, Any]:
     # Safety fallback (should never happen)
     return normalize_panel(slide, index)
 
+def extract_engage2_build_from_blocks(slide: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Engage2 fallback builder.
 
+    RULES:
+    - All paragraphs become build steps
+    - EXCEPT the final paragraph if it is a button label
+    - Button label is extracted, not invented
+    """
 
+    blocks = slide.get("content", {}).get("blocks", [])
+    paragraphs: List[str] = []
 
+    for b in blocks:
+        if not isinstance(b, dict):
+            continue
+        if b.get("type") != "paragraph":
+            continue
+
+        text = normalize_ws(b.get("text"))
+        if text:
+            paragraphs.append(text)
+
+    build: List[Dict[str, Any]] = []
+    for text in paragraphs:
+        build.append({
+            "title": "",
+            "content": [text],
+        })
+
+    return build
 
 def transform_module_v3_to_stage2(module: Dict[str, Any]) -> Dict[str, Any]:
     """

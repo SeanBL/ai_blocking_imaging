@@ -110,7 +110,5 @@ def validate_quiz_post_assembly(
     # ----------------------------
     roles = [q["quiz_role"] for q in questions]
 
-    if roles.count("module_application") == 0:
-        raise ValueError(
-            "[POST] No module_application question present in quiz payload"
-        )
+    # Application questions are optional; no invariant here
+    pass

@@ -53,7 +53,7 @@ def _chunk_sentences_30_70(sentences: list[str]) -> list[str]:
             continue
 
         # If adding stays <= 70, keep packing
-        if wc(candidate) <= 70:
+        if wc(candidate) <= 80:
             current.append(sent)
             continue
 
@@ -99,7 +99,7 @@ def _split_text_strict_30_70(llm: LLMClient, header: str, text: str) -> list[dic
 
     # Fast path
     wc = word_count(text)
-    if wc <= 70:
+    if wc <= 80:
         return [{"header": header, "content": text, "word_count": wc}]
 
     # --- Try LLM split first ---
@@ -113,7 +113,7 @@ def _split_text_strict_30_70(llm: LLMClient, header: str, text: str) -> list[dic
     for i, s in enumerate(slides):
         c = (s.get("content") or "").strip()
         w = word_count(c)
-        if w < 30 or w > 70 or not c:
+        if w < 30 or w > 100 or not c:
             ok = False
             break
         finalized.append({
@@ -155,7 +155,7 @@ def run_stage2_5(module_stage2: Dict[str, Any], llm: LLMClient) -> Dict[str, Any
     suggestions = {"module_id": module_stage2.get("module_title"), "slides": {}}
 
     for slide in module_stage2.get("slides", []):
-        slide_id = slide.get("id")
+        slide_id = slide.get("id") or slide.get("uuid")
         slide_type = slide.get("type", slide.get("slide_type"))
 
         slide_suggestions: Dict[str, Any] = {}

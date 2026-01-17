@@ -125,7 +125,7 @@ def generate_quiz_questions(
     source_paragraphs: List[str],
     inline_direct_questions: int,
     final_direct_questions: int,
-    module_application_questions: int = 1,
+    module_application_questions: int,
 ) -> Dict[str, Any]:
     """
     Gold-standard 3-pass quiz generation (V2, SAFE):

@@ -2,15 +2,14 @@
 {
   "question_id": "q7",
   "type": "mcq",
-  "prompt": "A team is preparing to run its first Health Screening Clinic (HSC) in a community next month. Several tasks are proposed at the planning meeting. Which plan best prioritizes readiness steps that prepare CHWs for their roles, test clinic operations before launch, and communicate key information to the community?",
+  "prompt": "A community health worker (CHW) tells you privately that a recent family crisis and financial strain are making it hard to concentrate at work, and they ask for help. As the program administrator, which response best balances support for the CHW with maintaining professional boundaries and service quality?",
   "options": {
-    "A": "Finalize procurement of equipment and medicines first, then provide brief on-the-job instruction during the event; advertise the date and location only.",
-    "B": "Confirm all CHWs are enrolled in a high-quality CME program, ensure they are trained in core measurement skills and device quality control (including calibration checks), conduct a practice run to test workflow and patient flow, and promote the event by explaining what the HSC is and that it will be free.",
-    "C": "Ensure CHWs have completed measurement training, but skip calibration/standardization training and the practice run; focus promotion on services offered without addressing cost.",
-    "D": "Register CHWs for CME and promote the event as free, but postpone measurement and quality-control training until after the first clinic day and do not conduct a practice run.",
-  },
-  "correct_answer": "B",
-  "rationale": "The best readiness plan includes: ensuring CHWs are registered for CME (c3) because training/experience/CME are critical for HSC roles (c2); training CHWs in measurement techniques (c6) and standardization/quality control such as calibration checks (c7); running a mock clinic day to test workflow, timing, data capture, and patient flow (c8); and, for early HSCs, promoting by explaining what the HSC is and emphasizing that it is free (c9)."
+    "A": "Thank the CHW for sharing, keep the discussion private, explore what work adjustments are needed to protect care quality, and connect the CHW with appropriate professional or community support services.",
+    "B": "Offer to meet weekly to provide counseling yourself and ask the CHW to avoid outside services so the situation stays within the program.",
+    "C": "Inform the rest of the team about the CHW’s situation so they understand the performance issues and can compensate for missed tasks.",
+    "D": "Acknowledge the concern but avoid further involvement because personal matters are outside the workplace; focus only on whether targets are being met.",
+    "correct_answer": "A",
+    "rationale": "CHWs’ personal issues can affect performance and should be handled humanely and professionally while ensuring quality of care. The administrator should keep personal disclosures confidential, maintain boundaries (not acting as a therapist), and refer the CHW to appropriate professional supports when needed."
 }
 
 ===== END =====
