@@ -7,6 +7,7 @@ RowTriple = Tuple[str, str, str]
 # (english_question, english_answer, translated_question, translated_answer)
 QuizRow = Tuple[str, str, str, str]
 
+
 def _join_blocks_as_paragraphs(slide: Dict[str, Any]) -> List[Tuple[str, bool]]:
     """
     Returns a list of (text, is_bullet) tuples.
@@ -34,28 +35,31 @@ def _join_blocks_as_paragraphs(slide: Dict[str, Any]) -> List[Tuple[str, bool]]:
 
     return out
 
+
 def slide_to_table_rows(slide: Dict[str, Any]) -> List[RowTriple]:
     """
     Returns list of (image, english, notes) rows for this slide.
     Deterministic; no mutation.
     """
-    slide_type = (slide.get("slide_type") or slide.get("type") or "").lower()
-    # print("DEBUG Stage3B slide_to_table_rows")
-    # print("  slide_id:", slide.get("id"))
-    # print("  slide_type:", slide_type)
-    # print("  content keys:", list((slide.get("content") or {}).keys()))
-    # print("  slide keys:", list(slide.keys()))
+    raw_type = (slide.get("slide_type") or slide.get("type") or "").lower()
+    notes = (slide.get("notes") or "").lower()
+
+    if "slide type = engage 2" in notes:
+        slide_type = "engage2"
+    elif "slide type = engage 1" in notes:
+        slide_type = "engage1"
+    else:
+        slide_type = raw_type
     slide_notes = slide.get("notes") or ""
 
     image = slide.get("image") or slide.get("image_path") or ""
 
     # 🔒 DISPATCH BY SLIDE TYPE ONLY
+    if slide_type in ("engage2", "engage_2"):
+        return _rows_for_engage2(slide, image)
 
     if slide_type in ("engage", "engage1"):
         return _rows_for_engage(slide, image)
-
-    if slide_type in ("engage2", "engage_2"):
-        return _rows_for_engage2(slide, image)
 
     if slide_type == "quiz":
         return _rows_for_quiz(slide)
@@ -65,75 +69,182 @@ def slide_to_table_rows(slide: Dict[str, Any]) -> List[RowTriple]:
     return [(image, paras, slide_notes)]
 
 
+def _coerce_body_blocks(item: Dict[str, Any]) -> List[Any]:
+    """
+    Engage item bodies appear in a few deterministic shapes across the pipeline.
+    This function ONLY normalizes how we READ them for Stage 3B rendering.
+    No schema changes, no inference.
+    """
+    # Most common: item["body"] is a list of dicts like {"type":"paragraph","text":"..."}
+    body = item.get("body")
+    if isinstance(body, list):
+        return body
+
+    # Sometimes: item["body"] may be a dict wrapping blocks
+    if isinstance(body, dict):
+        blocks = body.get("blocks")
+        if isinstance(blocks, list):
+            return blocks
+
+    # Sometimes: item["content"]["blocks"]
+    content = item.get("content")
+    if isinstance(content, dict):
+        blocks = content.get("blocks")
+        if isinstance(blocks, list):
+            return blocks
+
+    return []
+
+
+def _render_body_blocks_to_text(body_blocks: List[Any]) -> str:
+    """
+    Render engage body blocks into a single English text string.
+    Supports paragraphs AND bullets.
+    Deterministic, render-only.
+    """
+    parts: List[str] = []
+
+    for b in body_blocks:
+        if not isinstance(b, dict):
+            continue
+
+        btype = b.get("type")
+
+        if btype == "paragraph":
+            txt = (b.get("text") or "").strip()
+            if txt:
+                parts.append(txt)
+
+        elif btype == "bullets":
+            for item in b.get("items", []):
+                if item:
+                    parts.append(f"• {str(item).strip()}")
+
+    return "\n\n".join(parts).strip()
+
+
 
 def _rows_for_engage(slide: Dict[str, Any], image: str) -> List[RowTriple]:
     """
-    Engage 1 mapping for FINAL Stage 2.9 schema.
-    Layout:
-      - Intro row: notes column contains slide notes
-      - Item rows: notes column contains ONLY the button label
+    Engage 1 mapping for FINAL Stage 2 schema.
+
+    REQUIRED Stage 3B behavior (per your spec):
+      - Engage intro is rendered.
+      - Engage items are rendered in exact order; none dropped.
+      - Button labels MUST appear under the English Text column (NOT notes).
+      - Button labels should be visually grouped with the corresponding engage item content.
+      - Notes column: intro row may contain slide notes; item rows should NOT misuse notes for button labels.
     """
     rows: List[RowTriple] = []
 
+    slide_notes = slide.get("notes") or ""
+
+    # Stage 2 schema: intro/items live under slide["content"]
+    content = slide.get("content") or {}
+
     # --- Intro row ---
-    intro = slide.get("intro") or {}
+    intro = content.get("intro") or slide.get("intro") or {}
     intro_text = (intro.get("text") or "").strip()
     intro_image = intro.get("image") or image or ""
-    intro_notes = slide.get("notes") or intro.get("notes") or "Slide Type = Engage 1"
 
+    # Put slide notes on intro row only (deterministic, render-only)
     if intro_text:
-        rows.append((intro_image, intro_text, intro_notes))
+        rows.append((intro_image, intro_text, slide_notes))
+        # After intro image used once, clear for subsequent rows
+        image = ""
 
-    # --- Item rows ---
-    items = slide.get("items") or []
+    # --- Item rows (preserve order, no drops) ---
+    items = content.get("items") or slide.get("items") or []
+
+    content_texts: List[str] = []
+    button_texts: List[str] = []
+
     for item in items:
         if not isinstance(item, dict):
             continue
 
         button = (item.get("button_label") or "").strip()
 
-        body_blocks = item.get("body") or []
-        body_texts = [
-            b["text"].strip()
-            for b in body_blocks
-            if isinstance(b, dict) and b.get("text")
-        ]
-        body_text = "\n\n".join(body_texts)
+        # Legacy Engage-1 button items encoded as image == "Button Label"
+        if not button and item.get("image") == "Button Label":
+            body_blocks = _coerce_body_blocks(item)
+            button = _render_body_blocks_to_text(body_blocks)
 
-        rows.append(("", body_text, button))
+        body_blocks = _coerce_body_blocks(item)
+        body_text = _render_body_blocks_to_text(body_blocks)
+
+        # Content item (always render body text when present)
+        if body_text:
+            content_texts.append(body_text)
+
+        # Button item (render button whenever button_label exists OR legacy encoding)
+        if button:
+            button_texts.append(f"[Button] {button}")
+
+
+    # Emit content rows first
+    for txt in content_texts:
+        rows.append(("", txt, ""))
+
+    # Emit button rows last (each in its own cell)
+    for btn in button_texts:
+        rows.append(("", btn, ""))
+
+    # Defensive fallback: if intro missing and items empty, still emit one deterministic row.
+    if not rows:
+        rows.append((image, "", slide_notes))
 
     return rows
 
+
 def _rows_for_engage2(slide: Dict[str, Any], image: str) -> List[RowTriple]:
     """
-    Engage2: intro + build steps; one shared button label.
-    Expected possible shapes:
-      page0["button_label"], page0["build"][i]["text"]
+    Engage 2 mapping (FINAL, render-only).
+
+    Expected canonical shape:
+      - slide["build"] : list of steps
+      - step["content"] : list[str]
+      - slide["button_labels"] : list[str]
     """
     rows: List[RowTriple] = []
 
-    pages = slide.get("pages") or []
-    page0 = pages[0] if pages and isinstance(pages[0], dict) else {}
+    slide_notes = slide.get("notes") or ""
 
-    btn = (page0.get("button_label") or page0.get("label") or "").strip()
+    # --- Build list (primary Engage 2 content) ---
+    build = slide.get("build") or []
 
-    intro = page0.get("intro") or {}
-    intro_text = (intro.get("text") or intro.get("title") or "").strip()
-    if intro_text:
-        rows.append((image, intro_text, f"Slide Type = Engage2 (Intro) | Button: {btn}" if btn else "Slide Type = Engage2 (Intro)"))
-        image = ""
+    first_row = True
 
-    build = page0.get("build") or page0.get("steps") or []
-    for idx, step in enumerate(build, start=1):
+    for step in build:
         if not isinstance(step, dict):
             continue
-        txt = (step.get("text") or step.get("body") or "").strip()
-        notes = f"Step {idx} | Button Label: {btn}" if btn else f"Step {idx}"
-        rows.append(("", txt, notes))
 
+        contents = step.get("content") or []
+        if not isinstance(contents, list):
+            continue
+
+        for text in contents:
+            txt = str(text).strip()
+            if not txt:
+                continue
+
+            if first_row:
+                rows.append((image, txt, slide_notes))
+                image = ""
+                first_row = False
+            else:
+                rows.append(("", txt, ""))
+
+    # --- Button labels (after all build items) ---
+    button_labels = slide.get("button_labels") or []
+    for lbl in button_labels:
+        t = str(lbl).strip()
+        if t:
+            rows.append(("", f"[Button] {t}", ""))
+
+    # Defensive fallback
     if not rows:
-        rows.append((image, "", slide.get("notes") or "Slide Type = Engage2"))
-
+        rows.append((image, "", slide_notes))
 
     return rows
 
@@ -150,9 +261,7 @@ def _rows_for_quiz(slide: Dict[str, Any]) -> List[QuizRow]:
         prompt = q.get("prompt", "").strip()
 
         options = q.get("options") or {}
-        option_lines = [
-            f"{k}. {options[k]}" for k in sorted(options.keys())
-        ]
+        option_lines = [f"{k}. {options[k]}" for k in sorted(options.keys())]
 
         english_question = "\n\n".join([prompt, *option_lines]).strip()
 
@@ -163,12 +272,14 @@ def _rows_for_quiz(slide: Dict[str, Any]) -> List[QuizRow]:
         if rationale:
             english_answer += f"\n\n{rationale}"
 
-        rows.append((
-            english_question,
-            english_answer,
-            "",  # translated question (future)
-            "",  # translated answer (future)
-        ))
+        rows.append(
+            (
+                english_question,
+                english_answer,
+                "",  # translated question (future)
+                "",  # translated answer (future)
+            )
+        )
 
     return rows
 

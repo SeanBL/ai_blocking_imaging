@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 
 from docx import Document
+from docx.oxml.ns import qn
 
 
 # -------------------------------
@@ -30,10 +31,14 @@ def normalize(text: str) -> str:
 
 
 def is_list_paragraph(p) -> bool:
-    if p.style and p.style.name == "List Paragraph":
-        return True
+    """
+    True if the paragraph is explicitly a Word list item (bullet or numbered).
+    This is STRUCTURAL detection, not inference.
+    """
     pPr = p._p.pPr
-    return pPr is not None and pPr.numPr is not None
+    if pPr is None:
+        return False
+    return pPr.find(qn("w:numPr")) is not None
 
 
 def canonical_col_label(raw: str) -> str:
