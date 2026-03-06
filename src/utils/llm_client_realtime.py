@@ -1,8 +1,9 @@
 from __future__ import annotations
+
 import time
 import json
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Set, Optional
 
 import os
 from dotenv import load_dotenv
@@ -19,12 +20,11 @@ from .token_logger import log_usage
 
 class LLMClientRealtime:
     """
-    A unified interface for calling OpenAI or Anthropic models
-    with retry logic, JSON parsing, and modern API compatibility.
-
-    WORKS WITH:
-      • GPT-4.1, GPT-4.1-Mini, GPT-5.1, GPT-5.1-Preview (OpenAI)
-      • Claude 3.5, Claude 3.7 (Anthropic)
+    Unified interface for OpenAI + Anthropic with:
+    - retry logic
+    - JSON enforcement
+    - system + user prompt support
+    - pipeline-safe validation
     """
 
     def __init__(
@@ -53,124 +53,82 @@ class LLMClientRealtime:
         llm_settings = settings.get("llm", {})
 
         self.provider = provider or llm_settings.get("provider", "openai")
-        self.model = model or llm_settings.get("model", "gpt-4.1-mini")
+        self.model = model or llm_settings.get("model", "gpt-5.2-2025-12-11")
 
         self.temperature = (
-            temperature if temperature is not None 
+            temperature if temperature is not None
             else llm_settings.get("temperature", 0.0)
         )
 
-        # Note: this will map to max_completion_tokens for OpenAI
         self.max_tokens = (
             max_tokens if max_tokens is not None
             else llm_settings.get("max_output_tokens", 2048)
         )
 
         self.max_retries = (
-            max_retries if max_retries is not None 
+            max_retries if max_retries is not None
             else llm_settings.get("retry_limit", 5)
         )
 
-        # -------------------------------
-        # Build clients
-        # -------------------------------
         self._openai_client = OpenAI(api_key=self.openai_api_key)
         self._anthropic_client: Anthropic | None = None
 
     # ============================================================
-    # OPENAI CALL — Updated for 2025 SDK
+    # PROVIDER CALLS
     # ============================================================
-    def _call_openai(self, prompt: str) -> Dict[str, Any]:
-        """
-        Modern OpenAI Chat Completions API:
-        • Uses max_completion_tokens instead of max_tokens.
-        • Usage is a pydantic model.
-        """
-
+    def _call_openai(self, messages: list[dict[str, str]]) -> str:
         response = self._openai_client.chat.completions.create(
             model=self.model,
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
             temperature=self.temperature,
-            max_completion_tokens=self.max_tokens,  # ← REQUIRED FIX
+            max_completion_tokens=self.max_tokens,
         )
 
-        # New SDK: usage is a pydantic object.
-        usage_obj = response.usage
-
-        prompt_tokens = getattr(usage_obj, "prompt_tokens", 0)
-        completion_tokens = getattr(usage_obj, "completion_tokens", 0)
-
-        # Log API cost
+        usage = response.usage
         log_usage(
             model=self.model,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
-            provider="openai"
+            prompt_tokens=getattr(usage, "prompt_tokens", 0),
+            completion_tokens=getattr(usage, "completion_tokens", 0),
+            provider="openai",
         )
 
-        return {
-            "text": response.choices[0].message.content,
-            "usage": {
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": completion_tokens,
-            }
-        }
+        return response.choices[0].message.content
 
-    # ============================================================
-    # ANTHROPIC CALL — Updated for Messages API
-    # ============================================================
-    def _call_anthropic(self, prompt: str) -> Dict[str, Any]:
-
+    def _call_anthropic(self, messages: list[dict[str, str]]) -> str:
         if self._anthropic_client is None:
             self._anthropic_client = Anthropic(api_key=self.anthropic_api_key)
 
         msg = self._anthropic_client.messages.create(
             model=self.model,
-            max_tokens=self.max_tokens,    # Anthropic STILL uses max_tokens
+            max_tokens=self.max_tokens,
             temperature=self.temperature,
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
         )
-
-        text = msg.content[0].text if msg.content else ""
 
         usage = getattr(msg, "usage", None)
-        if usage:
-            prompt_tokens = getattr(usage, "input_tokens", 0)
-            completion_tokens = getattr(usage, "output_tokens", 0)
-        else:
-            prompt_tokens = completion_tokens = 0
-
         log_usage(
             model=self.model,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
-            provider="anthropic"
+            prompt_tokens=getattr(usage, "input_tokens", 0) if usage else 0,
+            completion_tokens=getattr(usage, "output_tokens", 0) if usage else 0,
+            provider="anthropic",
         )
 
-        return {
-            "text": text,
-            "usage": {
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": completion_tokens,
-            }
-        }
+        return msg.content[0].text if msg.content else ""
 
     # ============================================================
-    # PUBLIC: RAW TEXT CALL
+    # CORE CALL WITH RETRY
     # ============================================================
-    def call_text(self, prompt: str) -> str:
+    def _call_with_retry(self, messages: list[dict[str, str]]) -> str:
         last_error: Exception | None = None
 
         for attempt in range(1, self.max_retries + 1):
             try:
                 if self.provider == "openai":
-                    out = self._call_openai(prompt)
+                    return self._call_openai(messages)
                 elif self.provider == "anthropic":
-                    out = self._call_anthropic(prompt)
+                    return self._call_anthropic(messages)
                 else:
-                    raise ValueError(f"Unsupported LLM provider: {self.provider}")
-
-                return out["text"]
+                    raise ValueError(f"Unsupported provider: {self.provider}")
 
             except Exception as e:
                 last_error = e
@@ -180,31 +138,73 @@ class LLMClientRealtime:
                 )
                 time.sleep(2 ** attempt)
 
-        raise RuntimeError(
-            f"LLM failed after {self.max_retries} retries"
-        ) from last_error
+        raise RuntimeError("LLM failed after retries") from last_error
 
     # ============================================================
-    # PUBLIC: JSON CALL
+    # PUBLIC: STRUCTURED JSON CALL (PIPELINE SAFE)
     # ============================================================
-    def call_json(self, prompt: str) -> Dict[str, Any]:
+    def call_json_structured(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        required_keys: Optional[Set[str]] = None,
+    ) -> Dict[str, Any]:
         """
-        Call LLM, parse response as JSON, retry on decode error.
+        Canonical pipeline-safe JSON call.
         """
-        last_error = None
+
+        messages = [
+            {"role": "system", "content": system_prompt.strip()},
+            {
+                "role": "user",
+                "content": (
+                    user_prompt.strip()
+                    + "\n\nReturn ONLY valid JSON."
+                ),
+            },
+        ]
+
+        last_error: Exception | None = None
 
         for attempt in range(1, self.max_retries + 1):
             try:
-                text = self.call_text(prompt)
-                return json.loads(text)
+                text = self._call_with_retry(messages)
+                data = json.loads(text)
 
-            except json.JSONDecodeError as e:
+                if required_keys:
+                    missing = required_keys - data.keys()
+                    if missing:
+                        raise ValueError(
+                            f"Missing required keys in LLM response: {missing}"
+                        )
+
+                return data
+
+            except (json.JSONDecodeError, ValueError) as e:
                 last_error = e
                 logging.warning(
                     f"[JSON ERROR] attempt {attempt}/{self.max_retries} — {e}"
                 )
-                time.sleep(1.2)
+                time.sleep(1.5)
 
         raise RuntimeError(
-            "LLM returned invalid JSON after multiple retries."
+            "LLM returned invalid structured JSON after retries"
         ) from last_error
+
+    def call_json(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        required_keys: set[str] | None = None,
+    ) -> Dict[str, Any]:
+        """
+        Compatibility wrapper for legacy code.
+        Delegates to call_json_structured().
+        """
+        return self.call_json_structured(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            required_keys=required_keys,
+        )

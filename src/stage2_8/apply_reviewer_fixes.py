@@ -47,12 +47,11 @@ def _apply_fix_patch_to_question(question: Dict[str, Any], patch: Dict[str, Any]
                 elif ca == "false":
                     ca = False
                 else:
-                    return False
+                    return applied
 
             if isinstance(ca, bool):
                 question["correct_answer"] = ca
                 applied = True
-            return applied
 
         # -------- MCQ --------
         if qtype == "mcq" and isinstance(ca, str):
@@ -62,7 +61,6 @@ def _apply_fix_patch_to_question(question: Dict[str, Any], patch: Dict[str, Any]
             if ca in ("A", "B", "C", "D"):
                 question["correct_answer"] = ca
                 applied = True
-                return applied
 
             # Reviewer-style: "B (explanation...)"
             if ca and ca[0] in ("A", "B", "C", "D"):

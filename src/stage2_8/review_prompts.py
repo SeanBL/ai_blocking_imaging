@@ -22,7 +22,19 @@ FAILURE CONDITIONS (ONLY THESE)
 You MUST mark a question as FAIL if ANY of the following are true:
 
 1) MULTIPLE CORRECT ANSWERS
-   - More than one option could reasonably be correct.
+   - More than one option would clearly be correct for a well-prepared student.
+
+   INTERPRETATION RULE:
+   When evaluating whether multiple answers could be correct, judge the
+   question using the most reasonable interpretation of the stem and the
+   intended assessment focus.
+
+   Do NOT fail a question merely because a highly technical or alternate
+   interpretation could make another option appear correct.
+
+   Only mark "multiple correct answers" if more than one option would be
+   clearly correct to a well-prepared student reading the question in the
+   most natural way.
 
 2) INCORRECT CORRECT ANSWER
    - The stated correct answer contradicts the source text

@@ -8,7 +8,13 @@ from .validate_quiz_output import validate_quiz_payload
 from .quiz_quality_review import review_quiz_quality
 from .apply_reviewer_fixes import apply_reviewer_fixes
 from .editor_llm import run_editor_llm_single_question
+from .distractor_review import distractor_review
 
+
+REVIEWERS = [
+    ("clinical_review", review_quiz_quality),
+    ("distractor_review", distractor_review),
+]
 
 # Must match what validate_quiz_payload expects to exist per question
 REQUIRED_QUESTION_KEYS: Set[str] = {
@@ -85,19 +91,47 @@ def run_quiz_pipeline(
     logger.info(f"Structural validation passed — quiz_id={quiz_id}")
 
     # -------------------------------------------------
-    # 2) REVIEWER
+    # 2) REVIEWERS PIPELINE
     # -------------------------------------------------
-    review = review_quiz_quality(
-        quiz_payload=quiz,
-        source_paragraphs=source_paragraphs,
-    )
+    for name, reviewer in REVIEWERS:
+        logger.warning(f"Running reviewer: {name}")
 
-    if review.get("status") == "PASS":
-        logger.info(f"Stage 2.8 quiz pipeline completed — quiz_id={quiz_id}")
-        return quiz
+        if reviewer == review_quiz_quality:
+            review = reviewer(
+                quiz_payload=quiz,
+                source_paragraphs=source_paragraphs,
+            )
+        else:
+            review = reviewer(
+                quiz_payload=quiz,
+            )
 
-    issues = review.get("issues", []) or []
-    logger.warning(f"Reviewer issues — quiz_id={quiz_id}: {issues}")
+        if review.get("status") == "PASS":
+            continue
+
+        issues = review.get("issues", []) or []
+        logger.warning(f"{name} issues — quiz_id={quiz_id}: {issues}")
+
+        quiz, applied = apply_reviewer_fixes(
+            quiz_payload=quiz,
+            review_result=review,
+        )
+
+        validate_quiz_payload(
+            payload=quiz,
+            quiz_id=quiz_id,
+            expected_count=total_questions,
+        )
+
+        if applied > 0:
+            logger.info(
+                f"{name} deterministic fixes applied — quiz_id={quiz_id}, applied={applied}"
+            )
+
+    # -------------------------------------------------
+    # If reviewers produced fixes, continue with editor
+    # -------------------------------------------------
+    issues = []
 
     # -------------------------------------------------
     # 3) DETERMINISTIC FIXER

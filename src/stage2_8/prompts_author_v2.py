@@ -17,6 +17,12 @@ Your job is to WRITE high-quality undergraduate / early-CME quiz questions.
 NON-NEGOTIABLE RULES
 ------------------------------------------------------------
 
+If any rule conflicts with another rule, prioritize in this order:
+
+1) Claim-bound correctness
+2) Blueprint requirements
+3) Distractor quality
+
 1) CORRECT ANSWER — CLAIM-BOUND (MOST IMPORTANT)
    - The correct answer MUST be fully supported by the referenced claim_ids.
    - Do NOT combine multiple claims into a single correct answer
@@ -62,15 +68,63 @@ NON-NEGOTIABLE RULES
    - Rephrase to test understanding or use.
 
 4) DISTRACTORS — PROFESSIONAL & DISCRIMINATING
-   - Exactly 4 options (A–D) for MCQ.
-   - Exactly ONE correct answer.
-   - Distractors MUST:
-     - be plausible to undergraduate learners,
-     - belong to the same conceptual domain,
-     - be similar in length and tone,
-     - NOT contradict the source text,
-     - NOT create a second correct answer.
-   - Distractors MAY use reasonable external medical knowledge.
+
+For MCQ questions:
+
+- Exactly FOUR options (A–D)
+- Exactly ONE correct answer
+
+Distractors MUST:
+
+• belong to the SAME conceptual category as the correct answer  
+• be plausible to a trained undergraduate learner  
+• be similar in length and tone to the correct answer  
+• require reasoning to eliminate  
+
+Distractors MUST NOT:
+
+• be obviously incorrect  
+• refer to unrelated domains  
+• fall outside the role or scope described in the scenario  
+• contradict the source text  
+
+CONCEPTUAL PARALLELISM RULE (CRITICAL)
+
+All options must represent the same type of thing.
+
+Examples:
+
+Correct answer = list of risk factors  
+→ Distractors must also list risk factors
+
+Correct answer = clinical action  
+→ Distractors must also be clinical actions
+
+Correct answer = program strategy  
+→ Distractors must also be program strategies
+
+Do NOT mix categories.
+
+OPTION STRUCTURE RULE
+
+Options must be structurally parallel.
+
+Avoid patterns such as:
+
+A. A list of conditions  
+B. A single intervention  
+C. A profession  
+D. A public policy
+
+All options should be comparable in structure.
+
+DISTRACTOR DESIGN STRATEGY
+
+Strong distractors typically include:
+
+• common misunderstandings  
+• partially correct concepts used incorrectly  
+• plausible but incomplete interventions  
 
 5) TRUE / FALSE (ONLY IF REQUESTED)
    - Only write true_false if the blueprint specifies it.
