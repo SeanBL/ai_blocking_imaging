@@ -160,7 +160,44 @@ def run_stage1_fidelity_audit(
     word_set: Set[str] = set(word_fragments)
     stage1_set: Set[str] = set(stage1_fragments)
 
-    missing = sorted(word_set - stage1_set)
+    missing = []
+
+    # stage1_blob = " ".join(stage1_set)
+
+    for frag in word_set:
+        f = frag.replace("\u00A0", " ")
+        f = " ".join(f.split()).strip()
+
+        if not f:
+            continue
+
+        # Split composite Word paragraphs into semantic parts
+        parts: list[str] = []
+
+        # Case A: marker at START ( [[QUIZ]]Text )
+        if f.startswith("[[") and "]]" in f:
+            marker, rest = f.split("]]", 1)
+            parts.append(marker + "]]")
+            if rest.strip():
+                parts.append(rest.strip())
+
+        # Case B: marker at END ( Text[[QUIZ]] )
+        elif "[[" in f and f.endswith("]]"):
+            text, marker = f.split("[[", 1)
+            if text.strip():
+                parts.append(text.strip())
+            parts.append("[[" + marker)
+
+        # Case C: atomic paragraph
+        else:
+            parts.append(f)
+
+
+        # Check that ALL parts exist somewhere in Stage 1 output
+        for part in parts:
+            if part not in stage1_set:
+                missing.append(f)
+                break
 
     if missing:
         preview = "\n".join(f"- {m}" for m in missing[:10])

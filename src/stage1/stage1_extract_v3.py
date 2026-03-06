@@ -27,7 +27,17 @@ from docx.oxml.ns import qn
 def normalize(text: str) -> str:
     if not text:
         return ""
-    return " ".join(text.replace("\u00A0", " ").split()).strip()
+
+    # Normalize hyphen-like characters to ASCII hyphen
+    text = (
+        text.replace("\u2011", "-")  # non-breaking hyphen
+            .replace("\u2013", "-")  # en dash
+            .replace("\u2014", "-")  # em dash
+            .replace("\u00AD", "")   # soft hyphen
+            .replace("\u00A0", " ")  # non-breaking space
+    )
+
+    return " ".join(text.split()).strip()
 
 
 def is_list_paragraph(p) -> bool:
@@ -74,6 +84,8 @@ def is_slide_header(text: str) -> bool:
 
 def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
     doc = Document(str(docx_path))
+
+    print("Total tables:", len(doc.tables))
 
     module: Dict[str, Any] = {"module_title": docx_path.stem, "slides": []}
     slide_index = 0
@@ -224,6 +236,7 @@ def extract_tables_v3(docx_path: Path) -> Dict[str, Any]:
             row_texts: Dict[str, List[str]] = {}
 
             for idx, cell in enumerate(row.cells):
+                
                 if idx >= len(col_labels):
                     continue
                 label = col_labels[idx]
