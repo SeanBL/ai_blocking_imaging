@@ -9,6 +9,7 @@ from .quiz_quality_review import review_quiz_quality
 from .apply_reviewer_fixes import apply_reviewer_fixes
 from .editor_llm import run_editor_llm_single_question
 from .distractor_review import distractor_review
+from .duplicate_correct_guard import detect_duplicate_correct_answers
 
 
 REVIEWERS = [
@@ -74,6 +75,36 @@ def run_quiz_pipeline(
         module_application_questions=module_application_questions,
     )
 
+    # -------------------------------------------------
+    # 1.5) DUPLICATE CORRECT ANSWER GUARD
+    # -------------------------------------------------
+
+    dup_issues = detect_duplicate_correct_answers(quiz)
+
+    if dup_issues:
+        logger.warning(f"Duplicate-correct guard triggered — quiz_id={quiz_id}")
+
+        review_stub = {
+            "status": "FAIL",
+            "issues": dup_issues
+        }
+
+        quiz, applied = apply_reviewer_fixes(
+            quiz_payload=quiz,
+            review_result=review_stub,
+        )
+
+        if applied > 0:
+            validate_quiz_payload(
+                payload=quiz,
+                quiz_id=quiz_id,
+                expected_count=total_questions,
+            )
+
+            logger.info(
+                f"Duplicate guard fixes applied — quiz_id={quiz_id}, applied={applied}"
+            )
+
     if "questions" not in quiz or not isinstance(quiz["questions"], list):
         raise ValueError(f"Author returned invalid quiz schema — quiz_id={quiz_id}")
 
@@ -93,6 +124,8 @@ def run_quiz_pipeline(
     # -------------------------------------------------
     # 2) REVIEWERS PIPELINE
     # -------------------------------------------------
+    collected_issues = []
+
     for name, reviewer in REVIEWERS:
         logger.warning(f"Running reviewer: {name}")
 
@@ -110,6 +143,14 @@ def run_quiz_pipeline(
             continue
 
         issues = review.get("issues", []) or []
+        collected_issues.extend(issues)
+
+        logger.warning(f"{name} issues — quiz_id={quiz_id}: {issues}")
+
+        quiz, applied = apply_reviewer_fixes(
+            quiz_payload=quiz,
+            review_result=review,
+        )
         logger.warning(f"{name} issues — quiz_id={quiz_id}: {issues}")
 
         quiz, applied = apply_reviewer_fixes(
@@ -131,7 +172,7 @@ def run_quiz_pipeline(
     # -------------------------------------------------
     # If reviewers produced fixes, continue with editor
     # -------------------------------------------------
-    issues = []
+    issues = collected_issues
 
     # -------------------------------------------------
     # 3) DETERMINISTIC FIXER
