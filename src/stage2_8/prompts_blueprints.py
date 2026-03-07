@@ -57,12 +57,20 @@ Allowed values for cognitive_level:
   - "scenario"
   - "direct"
 
-- Use these guidelines:
-  - cognitive_level == "apply" → usually "scenario"
-  - cognitive_level == "interpret" → usually "scenario"
-  - cognitive_level == "recall" → usually "direct"
+QUESTION STYLE RULE
 
-  QUIZ ROLE RULES (MANDATORY)
+Question style is determined primarily by quiz_role.
+
+- quiz_role = "module_application"
+  → question_style MUST be "scenario"
+
+- quiz_role = "inline_direct" or "final_direct"
+  → question_style MUST be "direct"
+
+Cognitive level does NOT determine scenario usage.
+Direct questions commonly assess interpret-level understanding.
+
+QUIZ ROLE RULES (MANDATORY)
 
 For EACH quiz marker (e.g., [[QUIZ:1:QUESTIONS=3,3]]):
 
@@ -70,6 +78,15 @@ For EACH quiz marker (e.g., [[QUIZ:1:QUESTIONS=3,3]]):
   - 3 blueprints with quiz_role = "inline_direct"
   - 3 blueprints with quiz_role = "final_direct"
   - 1 blueprint with quiz_role = "module_application"
+
+DIRECT QUESTION STEM GUIDELINE
+
+For question_style = "direct":
+
+- The future question stem should be concise.
+- Prefer a single-sentence prompt.
+- Avoid unnecessary actors (e.g., "a CHW", "a team", "a clinician")
+  unless the actor affects the correct answer.
 
 ROLE CONSTRAINTS
 

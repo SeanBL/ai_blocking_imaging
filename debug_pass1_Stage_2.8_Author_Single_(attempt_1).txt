@@ -2,14 +2,15 @@
 {
   "question_id": "q7",
   "type": "mcq",
-  "prompt": "A community health worker (CHW) tells you privately that a recent family crisis and financial strain are making it hard to concentrate at work, and they ask for help. As the program administrator, which response best balances support for the CHW with maintaining professional boundaries and service quality?",
+  "prompt": "A community health worker (CHW) team is asked to launch a new school health education program for students aged 10–12. The principal wants it to fit the school timetable and be acceptable to families, and the CHW supervisor wants evidence the sessions are working so the program can be improved over time. Which plan best meets these expectations?",
   "options": {
-    "A": "Thank the CHW for sharing, keep the discussion private, explore what work adjustments are needed to protect care quality, and connect the CHW with appropriate professional or community support services.",
-    "B": "Offer to meet weekly to provide counseling yourself and ask the CHW to avoid outside services so the situation stays within the program.",
-    "C": "Inform the rest of the team about the CHW’s situation so they understand the performance issues and can compensate for missed tasks.",
-    "D": "Acknowledge the concern but avoid further involvement because personal matters are outside the workplace; focus only on whether targets are being met.",
-    "correct_answer": "A",
-    "rationale": "CHWs’ personal issues can affect performance and should be handled humanely and professionally while ensuring quality of care. The administrator should keep personal disclosures confidential, maintain boundaries (not acting as a therapist), and refer the CHW to appropriate professional supports when needed."
+    "A": "Deliver a single large assembly talk designed by the CHW team, then move on to other schools without collecting any feedback or participation data.",
+    "B": "Co-develop a series of sessions with teachers and school leaders so topics fit existing subjects and the school calendar; tailor materials to students’ reading level and cultural context; use participatory activities; repeat key messages across sessions; and track attendance, participation, and brief pre/post questions to guide improvements.",
+    "C": "Use a standardized script and slides for all grades to ensure consistency, schedule sessions outside normal class time, and evaluate impact only with an end-of-term exam created by the CHW team.",
+    "D": "Ask teachers to deliver the content independently during class time while CHWs provide printed materials, with no plan for follow-up sessions or documentation of engagement.",
+  },
+  "correct_answer": "B",
+  "rationale": "The best plan is to coordinate design with teachers and school officials so content fits subjects, calendars, and cultural norms; make sessions ongoing, age-appropriate, and participatory; reinforce messages across multiple sessions; and document attendance/participation plus simple before-and-after questions to demonstrate impact and refine the approach."
 }
 
 ===== END =====

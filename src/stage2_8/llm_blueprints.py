@@ -98,11 +98,13 @@ def _rebalance_blueprint_roles(
         if role in ("inline_direct", "final_direct"):
             # Direct roles must be direct + lower cognitive load
             bp["question_style"] = "direct"
+            bp["stem_style"] = "concise"
             # Prefer existing allowed value if already compliant; else default deterministically
             cl = bp.get("cognitive_level")
             if cl not in ("recall", "interpret"):
                 bp["cognitive_level"] = "recall"
         elif role == "module_application":
+            bp["stem_style"] = "scenario"
             # Keep application as-is; don't force anything extra here
             # (validator rules for module_application may exist elsewhere)
             pass
