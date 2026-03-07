@@ -1,6 +1,6 @@
 ===== RAW MODEL OUTPUT =====
 {
-  "quiz_id": 5,
+  "quiz_id": 6,
   "blueprints": [
     {
       "question_id": "q1",
@@ -11,12 +11,12 @@
         "c1"
       ],
       "cognitive_level": "interpret",
-      "target_skill": "Identify CHW communication touchpoints",
-      "correct_answer_idea": "Morning briefing and end-of-day debriefing are the key administrator-CHW communication points",
+      "target_skill": "Identify triggers for targeted screening",
+      "correct_answer_idea": "Targeted screening is supported when officials suspect a specific student-population health issue (e.g., respiratory clusters, hypertension, rising obesity)",
       "distractor_themes": [
-        "Only morning briefing matters",
-        "Debriefing is optional",
-        "Communication occurs only mid-day"
+        "Routine annual screening for all",
+        "Teacher-requested screening without suspicion",
+        "Screening based on CHW hunch"
       ],
       "avoid": [
         "verbatim restatement",
@@ -31,13 +31,13 @@
       "claim_ids": [
         "c2"
       ],
-      "cognitive_level": "recall",
-      "target_skill": "Recognize ideal debriefing formats",
-      "correct_answer_idea": "Ideal debriefing is a quick group meeting or a one-on-one check-in",
+      "cognitive_level": "interpret",
+      "target_skill": "Identify required planning partners",
+      "correct_answer_idea": "Targeted screening must be planned with local health authorities and school administrators to ensure validity, ethics, and follow-up",
       "distractor_themes": [
-        "Lengthy formal committee meeting",
-        "Written report only",
-        "Debriefing only by phone"
+        "Plan only within CHW team",
+        "Plan only with teachers",
+        "Plan only with parents"
       ],
       "avoid": [
         "verbatim restatement",
@@ -46,19 +46,19 @@
     },
     {
       "question_id": "q3",
-      "type": "mcq",
+      "type": "true_false",
       "quiz_role": "inline_direct",
       "question_style": "direct",
       "claim_ids": [
         "c3"
       ],
       "cognitive_level": "interpret",
-      "target_skill": "Classify debriefing report content",
-      "correct_answer_idea": "Daily activity reports can include household visits, clinic referrals, school visit data, and follow-ups",
+      "target_skill": "Apply tool-based follow-up decisions",
+      "correct_answer_idea": "CHWs should use official checklists/guides to decide follow-up and should not guess",
       "distractor_themes": [
-        "Only clinic-based activities",
-        "Only supply inventory counts",
-        "Only personal reflections"
+        "Rely on personal clinical judgment",
+        "Follow-up everyone to be safe",
+        "Use informal teacher impressions"
       ],
       "avoid": [
         "verbatim restatement",
@@ -71,16 +71,15 @@
       "quiz_role": "final_direct",
       "question_style": "direct",
       "claim_ids": [
-        "c4",
         "c5"
       ],
-      "cognitive_level": "interpret",
-      "target_skill": "Link workload practices to burnout risk",
-      "correct_answer_idea": "Administrators should monitor workload and distribute/rotate high-stress assignments to reduce burnout risk",
+      "cognitive_level": "recall",
+      "target_skill": "Recall key screening communication points",
+      "correct_answer_idea": "Explain why screening is done, what information will be collected, and what happens if a problem is detected",
       "distractor_themes": [
-        "Burnout is solely personal resilience",
-        "Assign toughest cases to one CHW",
-        "Avoid rotating any tasks"
+        "Only explain benefits, not risks",
+        "Only explain data collection",
+        "Only explain results after screening"
       ],
       "avoid": [
         "verbatim restatement",
@@ -89,19 +88,19 @@
     },
     {
       "question_id": "q5",
-      "type": "true_false",
+      "type": "mcq",
       "quiz_role": "final_direct",
       "question_style": "direct",
       "claim_ids": [
         "c6"
       ],
       "cognitive_level": "interpret",
-      "target_skill": "Evaluate need for ongoing education",
-      "correct_answer_idea": "Basic training alone is not sufficient; CHW education must continue to remain useful and effective",
+      "target_skill": "Choose privacy-protecting result communication",
+      "correct_answer_idea": "Avoid stigmatizing labels; discuss results privately and provide written information for caregivers",
       "distractor_themes": [
-        "Initial training is always enough",
-        "Only physicians need CME",
-        "Education stops after certification"
+        "Announce results to class",
+        "Use stigmatizing descriptors publicly",
+        "Share results only verbally"
       ],
       "avoid": [
         "verbatim restatement",
@@ -114,16 +113,15 @@
       "quiz_role": "final_direct",
       "question_style": "direct",
       "claim_ids": [
-        "c7",
-        "c8"
+        "c9"
       ],
       "cognitive_level": "interpret",
-      "target_skill": "Identify CME non-clinical benefits and access",
-      "correct_answer_idea": "CME can boost CHW self-esteem/public confidence and community trust; WiRED CME is free, peer-reviewed, easy to access, and global",
+      "target_skill": "Identify CHW role in teacher capacity",
+      "correct_answer_idea": "CHWs help close teachers’ health-topic training gaps via structured, ongoing capacity building that respects teachers’ experience and time",
       "distractor_themes": [
-        "CME only improves technical skills",
-        "Program requires payment",
-        "Program limited to one region"
+        "Replace teachers in health lessons",
+        "One-time lecture is sufficient",
+        "Assume teachers already trained"
       ],
       "avoid": [
         "verbatim restatement",
@@ -136,20 +134,20 @@
       "quiz_role": "module_application",
       "question_style": "scenario",
       "claim_ids": [
-        "c4",
-        "c5",
         "c1",
         "c2",
-        "c3
-      "
+        "c3",
+        "c4",
+        "c5",
+        "c6
       ],
       "cognitive_level": "apply",
-      "target_skill": "Plan debriefing and workload rotation",
-      "correct_answer_idea": "Implement brief end-of-day debrief (group or 1:1) to collect daily activity reports and use information to redistribute/rotate high-stress tasks to prevent burnout",
+      "target_skill": "Plan ethical targeted school screening",
+      "correct_answer_idea": "In a suspected health cluster, coordinate with health authorities and school administrators, clarify objective, use official checklists for follow-up decisions, explain purpose/data/next steps to families, and protect privacy/avoid stigma when sharing results",
       "distractor_themes": [
-        "Skip debriefing to save time",
-        "Keep high-stress cases unrotated",
-        "Rely on informal ad hoc updates"
+        "Proceed without official coordination",
+        "Use ad hoc follow-up criteria",
+        "Publicly share labeled results"
       ],
       "avoid": [
         "verbatim restatement",

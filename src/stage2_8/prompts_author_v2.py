@@ -75,73 +75,55 @@ apply
 Do NOT downgrade interpretation/application into recall.
 
 ------------------------------------------------------------
-QUESTION STYLE COMPOSITION (MANDATORY)
-------------------------------------------------------------
-
-Across the full quiz, write a MIX of question styles:
-
-• Approximately 60% scenario-based application questions  
-• Approximately 40% direct knowledge or guideline-based questions  
-
-------------------------------------------------------------
 QUESTION STEM LENGTH RULE
 ------------------------------------------------------------
 
-Prefer concise question stems.
+For question_style="direct":
 
-Whenever possible, write the prompt as a SINGLE SENTENCE.
+- maximum 21 words
+- single sentence
+- do NOT introduce actors (CHW, teacher, clinician, team)
 
-Avoid introducing the scenario as a separate sentence unless
-the additional context is required for the learner to make
-a correct decision.
+Example:
 
-Instead of:
-
+Avoid:
 "A community health worker is conducting routine screening in a school.
 Why is measuring blood pressure important during these screenings?"
 
 Prefer:
-
 "Why is measuring blood pressure important during school health screenings?"
 
-The goal is to embed necessary context inside the question
-rather than writing a separate scenario sentence.
-
-Use two sentences ONLY when the decision depends on the
+Use two sentences ONLY when the correct answer depends on
 specific details of a scenario.
+
+For direct knowledge questions, the prompt should almost
+always be a single sentence.
+
+Avoid introducing an actor (e.g., "a CHW", "a teacher",
+"a clinician", "a team") unless the actor's role affects
+the correct answer.
+
+If the actor does not change the decision being tested,
+remove the actor and ask the question directly.
 
 ------------------------------------------------------------
 SCENARIO-BASED QUESTION DESIGN (CRITICAL)
 ------------------------------------------------------------
 
-Scenario-based questions must:
+Scenario-based stems should be used ONLY when the blueprint
+cognitive_level is "apply".
 
-• describe a short realistic situation  
-• include a role (CHW, clinician, caregiver, school health worker, etc.)  
-• require interpretation or decision-making  
-• require choosing the BEST action or interpretation  
+For recall or interpret questions, ask the question directly
+without introducing a situation, actor, or narrative setup.
 
-A scenario should include a **decision point**.
+Application questions may include a short scenario when the
+decision depends on the specific details of the situation.
 
-Example structure:
+Scenario stems should be brief and should lead directly to a
+decision question such as:
 
-"A community health worker is conducting routine screening in a school.
-A student shows signs of ______. What is the most appropriate next step?"
-
-Avoid scenarios that simply restate a fact and ask for recall.
-
-Weak scenario (NOT acceptable):
-"A CHW measures blood pressure. What does blood pressure measure?"
-
-Strong scenario:
-"A CHW measures blood pressure during a school screening.
-Why is this measurement important for early detection?"
-
-Scenario prompts should usually end with:
-
-• "What is the most appropriate action?"  
-• "What is the best interpretation?"  
-• "What is the primary purpose of this step?"  
+• What is the most appropriate action?
+• What is the best interpretation? 
 
 Do NOT label question styles in the output.
 
@@ -150,6 +132,9 @@ Do NOT include planning notes in the JSON.
 ------------------------------------------------------------
 DIRECT KNOWLEDGE QUESTIONS
 ------------------------------------------------------------
+
+Direct knowledge questions should NOT include scenario setup
+or situational narrative. Ask the question directly.
 
 Direct knowledge questions:
 
@@ -254,6 +239,18 @@ D. A public policy
 All options should be comparable in structure.
 
 ------------------------------------------------------------
+ANSWER OPTION LENGTH RULE
+------------------------------------------------------------
+
+Keep answer choices concise.
+
+Prefer short phrases (5–15 words) rather than full sentences
+unless a longer option is required for clarity or precision.
+
+Avoid unnecessarily repeating wording from the question stem
+inside the answer choices.
+
+------------------------------------------------------------
 DISTRACTOR DESIGN STRATEGY
 ------------------------------------------------------------
 
@@ -316,26 +313,22 @@ Do NOT justify distractors.
 DISTRACTOR DESIGN THINKING STEP (INTERNAL)
 ------------------------------------------------------------
 
-Before writing the final answer options, internally perform the following reasoning:
+Before writing answer options, internally determine:
 
-1) Identify why the correct answer is correct based on the claim_ids.
+1) Why the correct answer is correct based on the claim_ids.
+2) Why each distractor is incorrect.
 
-2) For each distractor (A–D except the correct answer), determine
-a clear reason why it is incorrect.
-
-Common distractor logic includes:
+Common distractor patterns include:
 
 • plausible but incomplete intervention
 • incorrect timing or condition
 • misunderstanding of purpose
 • common learner misconception
-• reversing cause and effect
-
-Ensure that each distractor is wrong for a specific reason.
+• reversed cause and effect
 
 This reasoning step is INTERNAL and must NOT appear in the output.
 
-Return only the final JSON question structure.
+Return only the final JSON structure.
 
 ------------------------------------------------------------
 OUTPUT FORMAT (JSON ONLY)
